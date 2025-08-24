@@ -3,8 +3,8 @@
 
     let map;
     let currentWorker = null;
-    let currentRiskLegend = null; // Agora irá armazenar o elemento HTML diretamente
-    let currentWeatherLegend = null; // Agora irá armazenar o elemento HTML diretamente
+    let currentRiskLegend = null;
+    let currentWeatherLegend = null;
     let weatherLegendsData = {};
     const loader = document.getElementById('loader');
     let satelliteDataProcessed = false;
@@ -415,9 +415,6 @@
                         currentWeatherLegend = null;
                     }
                 }
-                // For 'fire' or 'satellite' categories, no legends are directly associated, so do nothing.
-                // The previous logic to remove both legends for these categories is removed
-                // to allow risk/weather legends to persist if their layers remain active.
             };
             customLayerControl.appendChild(button);
             overlayButtons[layerKey] = button;
@@ -513,7 +510,6 @@
                             currentWeatherLegend = null;
                         }
                     }
-                    // For other categories, no specific legend handling here.
                 };
                 customLayerControl.appendChild(button);
                 overlayButtons[layerName] = button;
