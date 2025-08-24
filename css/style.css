@@ -32,7 +32,6 @@ body {
 /* .leaflet-control-attribution {
     display: none;
 } */
-
 .loader {
     position: absolute;
     top: 50%;
@@ -90,8 +89,10 @@ body {
     color: var(--text-color);
     font-size: 0.9em;
     position: absolute;
-    bottom: 20px; /* Adjust position as needed */
-    right: 10px; /* Adjust position as needed */
+    bottom: 20px;
+    /* Adjust position as needed */
+    right: 10px;
+    /* Adjust position as needed */
     z-index: 100;
 }
 
@@ -110,7 +111,6 @@ body {
     opacity: 0.85;
     border-radius: 3px;
 }
-
 
 .sidebar {
     position: absolute;
@@ -289,12 +289,13 @@ canvas#myChart {
     align-items: center;
     background: no-repeat 50%/60%;
     background-position: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: all 0.2s ease-in-out;
 }
 
 .dot.dot-active {
-    height: 48px; /* Larger size when active */
+    height: 48px;
+    /* Larger size when active */
     width: 48px;
 }
 
@@ -468,7 +469,8 @@ canvas#myChart {
     display: flex;
     flex-direction: column;
     /* Adicionar largura máxima e mínima para evitar que o texto seja cortado */
-    min-width: 180px; /* Ajuste conforme necessário para o texto mais longo */
+    min-width: 180px;
+    /* Ajuste conforme necessário para o texto mais longo */
     max-width: 250px;
 }
 
@@ -484,8 +486,10 @@ canvas#myChart {
     display: flex;
     align-items: center;
     /* Garantir que o texto não é cortado e pode ir para a próxima linha se necessário */
-    white-space: normal; /* Permite que o texto quebre a linha */
-    word-wrap: break-word; /* Força a quebra de palavra em caso de texto muito longo */
+    white-space: normal;
+    /* Permite que o texto quebre a linha */
+    word-wrap: break-word;
+    /* Força a quebra de palavra em caso de texto muito longo */
 }
 
 .mapboxgl-ctrl-group.custom-controls button:last-child {
@@ -509,7 +513,6 @@ canvas#myChart {
     font-size: 1em;
     border-bottom: 1px solid var(--border-color);
 }
-
 
 .mapboxgl-ctrl-group button {
     width: auto;

@@ -15,20 +15,20 @@
 
     const weatherLayerMapping = {
         'Temperatura do Ar (2m)': 'TA2',
-    //    'Temperatura do Ponto de Orvalho': 'TD2',
-    //    'Temperatura do Solo (0-10cm)': 'TS0',
-    //    'Temperatura do Solo (>10cm)': 'TS10',
-    //    'Pressão Atmosférica': 'APM',
-    //    'Vento (Velocidade & Direção)': 'WND',
-    //    'Velocidade Vento (10m)': 'WS10',
-    //    'Humidade Relativa': 'HRD0',
-    //    'Nebulosidade': 'CL',
-    //    'Precipitação Convectiva': 'PAC0',
-    //    'Intensidade Precipitação': 'PR0',
-    //    'Precipitação Acumulada': 'PA0',
-    //    'Precipitação Acumulada - Chuva': 'PAR0',
-    //    'Precipitação Acumulada - Neve': 'PAS0',
-    //    'Profundidade Neve': 'SD0'
+        'Temperatura do Ponto de Orvalho': 'TD2',
+        'Temperatura do Solo (0-10cm)': 'TS0',
+        'Temperatura do Solo (>10cm)': 'TS10',
+        'Pressão Atmosférica': 'APM',
+        'Vento (Velocidade & Direção)': 'WND',
+        'Velocidade Vento (10m)': 'WS10',
+        'Humidade Relativa': 'HRD0',
+        'Nebulosidade': 'CL',
+        'Precipitação Convectiva': 'PAC0',
+        'Intensidade Precipitação': 'PR0',
+        'Precipitação Acumulada': 'PA0',
+        'Precipitação Acumulada - Chuva': 'PAR0',
+        'Precipitação Acumulada - Neve': 'PAS0',
+        'Profundidade Neve': 'SD0'
     };
 
     function initializeMap() {
@@ -299,7 +299,7 @@
 
     for (const layerName in baseLayers) {
         const button = document.createElement('button');
-        //button.innerHTML = `<img src="img/${layerName.toLowerCase().replace(' ', '_')}.png"> ${layerName}`; // Assumindo ícones
+        button.innerHTML = `<img src="img/${layerName.toLowerCase().replace(' ', '_')}.png"> ${layerName}`; // Assumindo ícones
         button.onclick = () => {
             map.setStyle(baseLayers[layerName]);
             // Remover legendas ao mudar camada base
@@ -341,50 +341,17 @@
             source: 'viirs-hotspots-data',
             icon: 'img/satellite.png',
             active: false
-        },
-        'Risco de Incêndio (Hoje)': {
-            id: 'risk-today-layer',
-            type: 'fill',
-            source: 'risk-today-data',
-            icon: 'img/fire_risk.png',
-            legend: 'risk',
-            active: false
-        },
-        'Risco de Incêndio (Amanhã)': {
-            id: 'risk-tomorrow-layer',
-            type: 'fill',
-            source: 'risk-tomorrow-data',
-            icon: 'img/fire_risk.png',
-            legend: 'risk',
-            active: false
-        },
-        'Risco de Incêndio (Depois de Amanhã)': {
-            id: 'risk-after-layer',
-            type: 'fill',
-            source: 'risk-after-data',
-            icon: 'img/fire_risk.png',
-            legend: 'risk',
-            active: false
-        },
-        'Temperatura do Ar (2m)': {
-            id: 'weather-TA2',
-            type: 'raster',
-            source: 'weather-TA2-source',
-            icon: 'img/weather.png',
-            legend: 'TA2',
-            active: false
-        },
-        // Adicionar outras camadas meteorológicas aqui
+        }
     };
 
     const overlayButtons = {};
 
     function setupCustomLayerControls() {
         map.addControl({
-            onAdd: function(mapInstance) {
+            onAdd: function (mapInstance) {
                 return customLayerControl;
             },
-            onRemove: function() {
+            onRemove: function () {
                 customLayerControl.parentNode.removeChild(customLayerControl);
             }
         }, 'top-right');
@@ -591,8 +558,8 @@
                 element: el,
                 anchor: 'center'
             })
-            .setLngLat([lng, lat])
-            .addTo(mapInstance);
+                .setLngLat([lng, lat])
+                .addTo(mapInstance);
 
             currentFireMarkers[fireId] = marker; // Armazenar o marcador para fácil acesso
 
@@ -767,7 +734,6 @@
     function checkAllDataProcessed() {
         if (satelliteDataProcessed && riskDataProcessed) {
             loader.style.display = 'none';
-            // editBackgroundImages(); // Não necessário com Mapbox, usar ícones no custom control
         }
     }
 
@@ -822,7 +788,6 @@
                         if (!overlayLayers[key]) {
                             overlayLayers[key] = {
                                 id: layerId,
-                                text: layerId,
                                 type: 'fill',
                                 source: sourceId,
                                 icon: 'img/fire_risk.png',
