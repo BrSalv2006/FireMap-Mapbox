@@ -8,6 +8,9 @@
     --button-text: #ffffff;
     --loader-bg: rgba(255, 255, 255, 0.8);
     --card-hover-shadow: rgba(0, 0, 0, 0.15);
+    --sidebar-width-desktop: 350px;
+    --sidebar-width-tablet: 40%;
+    --sidebar-height-mobile: 50%;
 }
 
 html,
@@ -18,20 +21,16 @@ body {
     padding: 0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI",
         Roboto, Helvetica, Arial, sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 #map {
     height: 100%;
     width: 100%;
     background-color: #f0f0f0;
-    transition: width 0.3s ease-out, height 0.3s ease-out;
+    transition: transform 0.3s ease-out;
 }
 
-/* Mapbox GL JS does not use .leaflet-control-attribution */
-/* .leaflet-control-attribution {
-    display: none;
-} */
 .loader {
     position: absolute;
     top: 50%;
@@ -77,16 +76,15 @@ body {
 }
 
 .sidebar {
-    position: absolute;
+    position: fixed;
     top: 0;
     right: 0;
-    width: 0;
+    width: var(--sidebar-width-desktop);
     height: 100%;
-    background-color: var(--panel-bg);
-    box-shadow: var(--shadow-color) -5px 0 15px;
+    background-color: transparent;
     z-index: 1000;
     overflow-y: auto;
-    transition: width 0.3s ease-out, transform 0.3s ease-out;
+    transition: transform 0.3s ease-out;
     transform: translateX(100%);
     display: flex;
     flex-direction: column;
@@ -94,41 +92,46 @@ body {
 }
 
 .sidebar.active {
-    width: 25%;
     transform: translateX(0);
-}
-
-@media (max-width: 991px) {
-    .sidebar.active {
-        width: 40%;
-    }
 }
 
 @media (max-width: 767px) {
     .sidebar {
+        background: transparent;
         width: 100%;
-        height: 0;
+        height: var(--sidebar-height-mobile);
         bottom: 0;
         top: auto;
-        box-shadow: var(--shadow-color) 0 -5px 15px;
         transition: height 0.3s ease-out, transform 0.3s ease-out;
-        transform: translateY(100%);
     }
 
     .sidebar.active {
-        height: 50%;
-        width: 100%;
+        height: var(--sidebar-height-mobile);
         transform: translateY(0);
     }
 
-    #map {
-        height: 100%;
-        transition: height 0.3s ease-out;
+    .mapboxgl-ctrl-top-right,
+    .mapboxgl-ctrl-bottom-right {
+        transition: bottom 0.3s ease-out, right 0.3s ease-out;
     }
 
-    #map.sidebar-active {
-        height: 50%;
+    .sidebar-open .mapboxgl-ctrl-bottom-left,
+    .sidebar-open .mapboxgl-ctrl-bottom-right {
+        bottom: calc(10px + var(--sidebar-height-mobile));
     }
+}
+
+@media (min-width: 992px) {
+
+    .sidebar-open .mapboxgl-ctrl-top-right,
+    .sidebar-open .mapboxgl-ctrl-bottom-right {
+        right: calc(10px + var(--sidebar-width-desktop));
+    }
+}
+
+.mapboxgl-ctrl-top-right,
+.mapboxgl-ctrl-bottom-right {
+    transition: right 0.3s ease-out;
 }
 
 @media (max-width: 600px) {
@@ -144,7 +147,6 @@ body {
 
 .card {
     background-color: var(--panel-bg);
-    border: 1px solid var(--border-color);
     border-radius: 12px;
     margin: 15px;
     box-shadow: 0 4px 12px var(--shadow-color);
@@ -252,7 +254,6 @@ canvas#myChart {
 
 .dot.dot-active {
     height: 48px;
-    /* Larger size when active */
     width: 48px;
 }
 
@@ -356,6 +357,30 @@ canvas#myChart {
     display: block;
 }
 
+#status {
+    border-left: 2px solid #bdbdbd;
+}
+
+.status-hour {
+    margin-block-start: 0%;
+    margin-block-end: 0%;
+    margin-left: 1em;
+}
+
+.status-label {
+    margin-block-start: 0%;
+    margin-block-end: 1em;
+    margin-left: 1em;
+}
+
+.danger {
+    display: none;
+}
+
+.danger.active {
+    display: block;
+}
+
 .f-location a,
 .f-local a {
     color: #007bff;
@@ -416,7 +441,6 @@ canvas#myChart {
     content: attr(data-status);
 }
 
-/* CUSTOM CONTROLS */
 .mapboxgl-ctrl-group.custom-controls {
     display: flex;
     flex-direction: column;
@@ -426,11 +450,9 @@ canvas#myChart {
     padding: 5px;
     margin: 10px;
     min-width: 180px;
-    /* Manter a largura mínima */
     max-width: 300px;
-    /* Aumentar a largura máxima para acomodar mais texto */
-        max-height: 90vh; /* Set a maximum height relative to the viewport height */
-    overflow-y: auto; /* Enable vertical scrolling */
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .mapboxgl-ctrl-group.custom-controls button {
@@ -473,11 +495,14 @@ canvas#myChart {
     background-color: #f0f0f0;
 }
 
+.mapboxgl-ctrl-group.custom-controls button.active:hover {
+    background-color: #f0f0f0;
+}
+
 .mapboxgl-ctrl-group.custom-controls button.active {
     font-weight: bold;
     color: var(--button-bg);
     background-color: #e6f2ff;
-    /* Light blue background for active */
 }
 
 .mapboxgl-ctrl-group.custom-controls button img {
@@ -520,7 +545,6 @@ canvas#myChart {
 .mapbox-weather-legend {
     bottom: 10px;
     left: 170px;
-    /* Ajuste para ficar ao lado da legenda de risco */
     max-width: 180px;
 }
 

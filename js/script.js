@@ -57,6 +57,7 @@
             addWeatherLayers();
             fetchAndApplyDynamicLayers();
             rebuildOverlayControls();
+            updateBaseLayerButtonState('Streets');
         });
 
         map.on('click', () => {
@@ -67,7 +68,7 @@
             }
             map.flyTo({ center: [-7.8536599, 39.557191], zoom: 6 });
 
-            document.getElementById('map').style.width = '100%';
+            document.body.classList.remove('sidebar-open');
             document.querySelector('.sidebar').classList.remove('active');
             window.history.pushState('fogo', '', window.location.href.split('?')[0]);
         });
@@ -202,7 +203,7 @@
             legendContainer.innerHTML +=
                 `<i style="background:${colors[i]}" class="${labels[i]}"></i> ${labels[i]}<br>`;
         }
-        
+
         map.getContainer().appendChild(legendContainer);
         currentRiskLegend = legendContainer;
 
@@ -223,7 +224,7 @@
         } else {
             legendContainer.className = 'mapbox-legend mapbox-weather-legend-alone';
         }
-        
+
         legendContainer.innerHTML += `<h4>${title}</h4>`;
         for (let i = 0; i < stops.length; i++) {
             const stop = stops[i];
@@ -237,7 +238,7 @@
             legendContainer.innerHTML +=
                 `<i style="background:${stop.color}"></i> ${label}<br>`;
         }
-        
+
         map.getContainer().appendChild(legendContainer);
         currentWeatherLegend = legendContainer;
     }
@@ -246,8 +247,11 @@
     customLayerControl.className = 'mapboxgl-ctrl mapboxgl-ctrl-group custom-controls';
 
     const baseLayerToggle = document.createElement('div');
-    baseLayerToggle.className = 'layer-category-title';
-    baseLayerToggle.textContent = 'Camadas Base';
+    baseLayerToggle.className = 'layer-category-container';
+    baseLayerToggle.innerHTML = '<div class="layer-category-title">Camadas Base</div>';
+    const baseLayerButtonsContainer = document.createElement('div');
+    baseLayerButtonsContainer.className = 'overlay-buttons-container';
+    baseLayerToggle.appendChild(baseLayerButtonsContainer);
     customLayerControl.appendChild(baseLayerToggle);
 
     const baseLayers = {
@@ -261,11 +265,24 @@
         'Navigation Night': 'mapbox://styles/mapbox/navigation-night-v1'
     };
 
+    const baseLayerButtons = {};
+
+    function updateBaseLayerButtonState(activeLayerName) {
+        for (const layerName in baseLayerButtons) {
+            if (layerName === activeLayerName) {
+                baseLayerButtons[layerName].classList.add('active');
+            } else {
+                baseLayerButtons[layerName].classList.remove('active');
+            }
+        }
+    }
+
     for (const layerName in baseLayers) {
         const button = document.createElement('button');
         button.innerHTML = `<img src="img/map.png"> ${layerName}`;
         button.onclick = () => {
             map.setStyle(baseLayers[layerName]);
+            updateBaseLayerButtonState(layerName);
             if (currentRiskLegend) {
                 currentRiskLegend.remove();
                 currentRiskLegend = null;
@@ -281,10 +298,10 @@
                 rebuildOverlayControls();
             });
         };
-        customLayerControl.appendChild(button);
+        baseLayerButtonsContainer.appendChild(button);
+        baseLayerButtons[layerName] = button;
     }
 
-    // New containers for different overlay categories
     const fireControls = document.createElement('div');
     fireControls.className = 'layer-category-container';
     fireControls.innerHTML = '<div class="layer-category-title">Incêndios</div>';
@@ -403,7 +420,6 @@
                             if (map.getLayer(currentLayer.id)) {
                                 map.setLayoutProperty(currentLayer.id, 'visibility', 'none');
                             }
-                            // Specific handling for satellite areas when modis/viirs are toggled
                             if (currentLayer.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
                                 map.setLayoutProperty('modis-areas', 'visibility', 'none');
                             }
@@ -413,7 +429,7 @@
                         }
                     }
                 }
-                
+
                 layerConfig.active = newActiveState;
                 button.classList.toggle('active', newActiveState);
 
@@ -448,8 +464,7 @@
                     }
                 }
             };
-            
-            // Append button to the correct container based on category
+
             if (layerConfig.category === 'fire') {
                 fireButtonsContainer.appendChild(button);
             } else if (layerConfig.category === 'satellite') {
@@ -459,7 +474,7 @@
             } else if (layerConfig.category === 'weather') {
                 weatherButtonsContainer.appendChild(button);
             }
-            
+
             overlayButtons[layerKey] = button;
         }
     }
@@ -774,9 +789,7 @@
                 sidebar.classList.add('active');
                 sidebar.scrollTop = 0;
 
-                if (window.innerWidth >= 992) {
-                    document.getElementById('map').style.width = '75%';
-                }
+                document.body.classList.add('sidebar-open');
 
                 document.querySelector('.f-local').innerHTML = locationText;
                 document.querySelector('.f-man').textContent = fire.man;
@@ -882,7 +895,16 @@
     async function danger(id) {
         try {
             const response = await fetch(`https://fogos.pt/views/risk/${id}`);
-            document.querySelector('.f-danger').innerHTML = await response.text();
+            const data = await response.text();
+            const fDanger = document.querySelector('.f-danger');
+            const dangerRow = document.querySelector('.row.danger');
+            if (data && data.includes("active")) {
+                fDanger.innerHTML = data;
+                dangerRow.classList.add('active');
+            } else {
+                fDanger.innerHTML = '';
+                dangerRow.classList.remove('active');
+            }
         } catch (error) {
             console.error('Error fetching danger info:', error);
         }
@@ -903,7 +925,7 @@
             const data = await response.text();
             const fExtra = document.querySelector('.f-extra');
             const extraRow = document.querySelector('.row.extra');
-            if (data && data.trim().length !== 0) {
+            if (data && data.trim().length > 2) {
                 fExtra.innerHTML = data;
                 extraRow.classList.add('active');
             } else {
@@ -948,7 +970,7 @@
                     overlayLayers['VIIRS Hotspots'].areaData = { type: 'FeatureCollection', features: (data.viirs.areas && data.viirs.areas.features) ? data.viirs.areas.features : [] };
                 }
                 addSatelliteLayers(data);
-                rebuildOverlayControls(); // Rebuild controls after satellite data is processed
+                rebuildOverlayControls();
             } else if (type === 'riskResult') {
                 loader.innerText = 'A adicionar camadas de risco...';
                 let newRiskLayerActivated = false;
@@ -1042,7 +1064,7 @@
                     overlayLayers['Fires'].sourceData = data;
                 }
                 checkAllDataProcessed();
-                rebuildOverlayControls(); // Rebuild controls after fire data is processed
+                rebuildOverlayControls();
             } else if (type === 'error') {
                 const errorMessage = document.createElement('div');
                 errorMessage.className = 'error-message';

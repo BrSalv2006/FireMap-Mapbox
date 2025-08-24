@@ -6,7 +6,6 @@
         <meta name="description" content="Visualizador de incêndios em Portugal">
         <title>Portugal Fire Map</title>
         <link rel="icon" type="image/x-icon" href="img/fire_icon.png">
-        <!-- Mapbox GL JS CSS -->
         <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
         <link rel="stylesheet" href="css/style.css">
     </head>
@@ -75,6 +74,14 @@
                         <div class="card-body">
                             <h4 class="card-title">Meteorologia</h4>
                             <div class="f-meteo"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row danger">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
                             <h4 class="card-title">Risco de Incêndio</h4>
                             <div class="f-danger"></div>
                         </div>
@@ -82,11 +89,8 @@
                 </div>
             </div>
         </div>
-        <!-- Mapbox GL JS Script -->
         <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
-        <!-- Chart.js for charts -->
         <script src="https://unpkg.com/chart.js/dist/chart.umd.min.js"></script>
-        <!-- Your application script -->
         <script src="js/script.js" defer></script>
     </body>
 </html>
