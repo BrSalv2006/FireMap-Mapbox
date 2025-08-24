@@ -80,6 +80,7 @@ body {
 }
 
 /* Custom legend styles for Mapbox */
+/* Base legend styling */
 .mapbox-legend {
     background: white;
     padding: 10px 12px;
@@ -88,12 +89,20 @@ body {
     line-height: 22px;
     color: var(--text-color);
     font-size: 0.9em;
-    position: absolute;
-    bottom: 20px;
-    /* Adjust position as needed */
-    right: 10px;
-    /* Adjust position as needed */
+    position: absolute; /* Changed to absolute for independent positioning */
     z-index: 100;
+}
+
+/* Specific positioning for Risk Legend */
+.mapbox-risk-legend {
+    bottom: 20px;
+    right: 10px;
+}
+
+/* Specific positioning for Weather Legend */
+.mapbox-weather-legend {
+    bottom: 20px; /* Adjust as needed to prevent overlap with risk legend */
+    right: 170px; /* Position to the left of the risk legend */
 }
 
 .mapbox-legend h4 {
@@ -468,9 +477,7 @@ canvas#myChart {
     margin: 10px;
     display: flex;
     flex-direction: column;
-    /* Adicionar largura máxima e mínima para evitar que o texto seja cortado */
     min-width: 180px;
-    /* Ajuste conforme necessário para o texto mais longo */
     max-width: 250px;
 }
 
@@ -485,11 +492,8 @@ canvas#myChart {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    /* Garantir que o texto não é cortado e pode ir para a próxima linha se necessário */
     white-space: normal;
-    /* Permite que o texto quebre a linha */
     word-wrap: break-word;
-    /* Força a quebra de palavra em caso de texto muito longo */
 }
 
 .mapboxgl-ctrl-group.custom-controls button:last-child {

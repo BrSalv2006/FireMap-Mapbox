@@ -1,15 +1,15 @@
 ((window, document) => {
-    mapboxgl.accessToken = 'pk.eyJ1IjoiYnJzYWx2MjAwNiIsImEiOiJjbWU0cnA2dGIwZGdzMmxxdHN3aXFla3FhIn0.olUF6dEN497eCVOaaMnBow'; // Substitua pelo seu token de acesso do Mapbox
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYnJzYWx2MjAwNiIsImEiOiJjbWU0cnA2dGIwZGdzMmxxdHN3aXFla3FhIn0.olUF6dEN497eCVOaaMnBow';
 
     let map;
     let currentWorker = null;
-    let currentRiskLegend = null;
-    let currentWeatherLegend = null;
+    let currentRiskLegend = null; // Agora irá armazenar o elemento HTML diretamente
+    let currentWeatherLegend = null; // Agora irá armazenar o elemento HTML diretamente
     let weatherLegendsData = {};
     const loader = document.getElementById('loader');
     let satelliteDataProcessed = false;
     let riskDataProcessed = false;
-    let currentFireMarkers = {}; // Para gerir marcadores de incêndio MapboxGL
+    let currentFireMarkers = {};
 
     const baseSize = 22;
 
@@ -34,13 +34,12 @@
     function initializeMap() {
         map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v12', // Estilo inicial do Mapbox. Pode ser alterado para globe.
-            center: [-7.8536599, 39.557191], // [lng, lat]
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-7.8536599, 39.557191],
             zoom: 7,
-            projection: 'globe' // Ativa a projeção de globo
+            projection: 'globe'
         });
 
-        // Adiciona controlos de navegação e geolocalização
         map.addControl(new mapboxgl.NavigationControl(), 'top-left');
         map.addControl(
             new mapboxgl.GeolocateControl({
@@ -54,9 +53,8 @@
         );
 
         map.on('load', () => {
-            // Adicionar fontes e camadas para dados de incêndio e risco após o mapa carregar
-            setupCustomLayerControls(); // Configura os controlos de camada personalizados
-            addWeatherLayers(); // Adiciona as camadas meteorológicas como fontes
+            setupCustomLayerControls();
+            addWeatherLayers();
         });
 
         map.on('click', () => {
@@ -71,7 +69,7 @@
             document.querySelector('.sidebar').classList.remove('active');
             window.history.pushState('fogo', '', window.location.href.split('?')[0]);
 
-            // Remove legendas se existirem
+            // Always remove legends on map click (general reset)
             if (currentRiskLegend) {
                 currentRiskLegend.remove();
                 currentRiskLegend = null;
@@ -84,25 +82,21 @@
     }
 
     function removeAllMapboxLayersAndSources() {
-        // Remover camadas e fontes de satélite, risco e incêndios
         const layerIds = ['modis-hotspots', 'modis-areas', 'viirs-hotspots', 'viirs-areas', 'fires-layer'];
         const sourceIds = ['modis-data', 'viirs-data', 'risk-data', 'fires-data'];
 
-        // Remover camadas
         layerIds.forEach(id => {
             if (map.getLayer(id)) {
                 map.removeLayer(id);
             }
         });
 
-        // Remover fontes
         sourceIds.forEach(id => {
             if (map.getSource(id)) {
                 map.removeSource(id);
             }
         });
 
-        // Remover marcadores HTML de incêndio
         for (const fireId in currentFireMarkers) {
             currentFireMarkers[fireId].remove();
         }
@@ -146,6 +140,9 @@
                     'circle-stroke-color': '#fff',
                     'circle-stroke-width': 1,
                     'circle-opacity': 0.8
+                },
+                layout: {
+                    'visibility': 'none'
                 }
             });
         }
@@ -165,11 +162,13 @@
                     'fill-color': '#ff0000',
                     'fill-opacity': 0.2,
                     'fill-outline-color': '#ff0000'
+                },
+                layout: {
+                    'visibility': 'none'
                 }
             });
         }
 
-        // Adicionar eventos de clique para os hotspots e áreas
         map.on('click', `${type}-hotspots`, (e) => {
             const p = e.features[0].properties;
             const popupContent = `<b>Localização:</b> ${p.location}<br><hr style="margin: 4px 0;"><b>Brilho:</b> ${p.brightness}K<br><b>Data, Hora:</b> ${p.acq_date}<br><b>Satélite:</b> ${p.satellite}<br><b>Confiança:</b> ${p.confidence}<br><b>Dia/Noite:</b> ${p.daynight}<br><b>PRF:</b> ${p.frp}MW`;
@@ -186,10 +185,8 @@
         });
 
         map.on('click', `${type}-areas`, (e) => {
-            //const area_sq_km = turf.area(e.features[0]) / 1000000;
             new mapboxgl.Popup()
                 .setLngLat(e.lngLat)
-                //.setHTML(`Burnt Area: ${Math.round(area_sq_km)} KM²`)
                 .addTo(map);
         });
         map.on('mouseenter', `${type}-areas`, () => {
@@ -206,7 +203,6 @@
         if (data.modis) {
             createSatelliteLayers(data.modis, 'modis');
         } else {
-            // Certifica-se de que as camadas são removidas se não houver dados
             if (map.getLayer('modis-hotspots')) map.removeLayer('modis-hotspots');
             if (map.getSource('modis-hotspots-data')) map.removeSource('modis-hotspots-data');
             if (map.getLayer('modis-areas')) map.removeLayer('modis-areas');
@@ -216,7 +212,6 @@
         if (data.viirs) {
             createSatelliteLayers(data.viirs, 'viirs');
         } else {
-            // Certifica-se de que as camadas são removidas se não houver dados
             if (map.getLayer('viirs-hotspots')) map.removeLayer('viirs-hotspots');
             if (map.getSource('viirs-hotspots-data')) map.removeSource('viirs-hotspots-data');
             if (map.getLayer('viirs-areas')) map.removeLayer('viirs-areas');
@@ -227,13 +222,14 @@
         checkAllDataProcessed();
     }
 
-    function addRiskLegend(mapInstance) {
+    // Função para adicionar a legenda de risco
+    function addRiskLegend() {
         if (currentRiskLegend) {
             currentRiskLegend.remove();
         }
 
         const legendContainer = document.createElement('div');
-        legendContainer.className = 'mapbox-legend';
+        legendContainer.className = 'mapbox-legend mapbox-risk-legend';
         const grades = [1, 2, 3, 4, 5];
         const labels = ['Reduzido', 'Moderado', 'Elevado', 'Muito Elevado', 'Máximo'];
         const colors = ['#509e2f', '#ffe900', '#e87722', '#cb333b', '#6f263d'];
@@ -242,22 +238,19 @@
             legendContainer.innerHTML +=
                 `<i style="background:${colors[i]}" class="${labels[i]}"></i> ${labels[i]}<br>`;
         }
-
-        currentRiskLegend = new mapboxgl.Marker(legendContainer, { anchor: 'bottom-right' })
-            .setLngLat([-7.8536599, 39.557191]) // Posição arbitrária, o CSS irá posicionar
-            .addTo(mapInstance);
-        currentRiskLegend.getElement().style.position = 'absolute';
-        currentRiskLegend.getElement().style.bottom = '20px';
-        currentRiskLegend.getElement().style.right = '10px';
+        
+        map.getContainer().appendChild(legendContainer);
+        currentRiskLegend = legendContainer;
     }
 
+    // Função para gerar a legenda de meteorologia
     function generateWeatherLegend(title, stops, unit) {
         if (currentWeatherLegend) {
             currentWeatherLegend.remove();
         }
 
         const legendContainer = document.createElement('div');
-        legendContainer.className = 'mapbox-legend';
+        legendContainer.className = 'mapbox-legend mapbox-weather-legend';
         legendContainer.innerHTML += `<h4>${title}</h4>`;
         for (let i = 0; i < stops.length; i++) {
             const stop = stops[i];
@@ -271,16 +264,11 @@
             legendContainer.innerHTML +=
                 `<i style="background:${stop.color}"></i> ${label}<br>`;
         }
-
-        currentWeatherLegend = new mapboxgl.Marker(legendContainer, { anchor: 'bottom-right' })
-            .setLngLat([-7.8536599, 39.557191]) // Posição arbitrária, o CSS irá posicionar
-            .addTo(map);
-        currentWeatherLegend.getElement().style.position = 'absolute';
-        currentWeatherLegend.getElement().style.bottom = '20px';
-        currentWeatherLegend.getElement().style.right = '10px';
+        
+        map.getContainer().appendChild(legendContainer);
+        currentWeatherLegend = legendContainer;
     }
 
-    // Custom Layer Control
     const customLayerControl = document.createElement('div');
     customLayerControl.className = 'mapboxgl-ctrl mapboxgl-ctrl-group custom-controls';
 
@@ -299,10 +287,10 @@
 
     for (const layerName in baseLayers) {
         const button = document.createElement('button');
-        button.innerHTML = `<img src="img/${layerName.toLowerCase().replace(' ', '_')}.png"> ${layerName}`; // Assumindo ícones
+        button.innerHTML = `<img src="img/${layerName.toLowerCase().replace(' ', '_')}.png"> ${layerName}`;
         button.onclick = () => {
             map.setStyle(baseLayers[layerName]);
-            // Remover legendas ao mudar camada base
+            // Still remove legends when changing base map, as they might not be relevant
             if (currentRiskLegend) {
                 currentRiskLegend.remove();
                 currentRiskLegend = null;
@@ -326,21 +314,24 @@
             type: 'symbol',
             source: 'fires-data',
             icon: 'img/fire.png',
-            active: true
+            active: true,
+            category: 'fire'
         },
         'MODIS Hotspots': {
             id: 'modis-hotspots',
             type: 'circle',
             source: 'modis-hotspots-data',
             icon: 'img/satellite.png',
-            active: false
+            active: false,
+            category: 'satellite'
         },
         'VIIRS Hotspots': {
             id: 'viirs-hotspots',
             type: 'circle',
             source: 'viirs-hotspots-data',
             icon: 'img/satellite.png',
-            active: false
+            active: false,
+            category: 'satellite'
         }
     };
 
@@ -361,15 +352,45 @@
             const button = document.createElement('button');
             button.innerHTML = `<img src="${layerConfig.icon}"> ${layerKey}`;
             button.className = layerConfig.active ? 'active' : '';
-            button.onclick = () => {
-                layerConfig.active = !layerConfig.active;
-                button.classList.toggle('active', layerConfig.active);
+            button.dataset.category = layerConfig.category;
+            button.dataset.layerId = layerConfig.id;
 
-                // Gerir visibilidade das camadas no Mapbox
+            button.onclick = () => {
+                const clickedCategory = button.dataset.category;
+                const clickedLayerId = button.dataset.layerId;
+                let newActiveState;
+
+                if (button.classList.contains('active')) {
+                    newActiveState = false;
+                } else {
+                    newActiveState = true;
+                }
+
+                for (const key in overlayLayers) {
+                    const currentLayer = overlayLayers[key];
+                    if (currentLayer.category === clickedCategory && currentLayer.id !== clickedLayerId) {
+                        currentLayer.active = false;
+                        if (overlayButtons[key]) {
+                            overlayButtons[key].classList.remove('active');
+                        }
+                        if (map.getLayer(currentLayer.id)) {
+                            map.setLayoutProperty(currentLayer.id, 'visibility', 'none');
+                            if (currentLayer.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
+                                map.setLayoutProperty('modis-areas', 'visibility', 'none');
+                            }
+                            if (currentLayer.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
+                                map.setLayoutProperty('viirs-areas', 'visibility', 'none');
+                            }
+                        }
+                    }
+                }
+
+                layerConfig.active = newActiveState;
+                button.classList.toggle('active', newActiveState);
+
                 if (map.getLayer(layerConfig.id)) {
                     map.setLayoutProperty(layerConfig.id, 'visibility', layerConfig.active ? 'visible' : 'none');
                 }
-                // Para camadas de satélite, gerir também as áreas
                 if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
                     map.setLayoutProperty('modis-areas', 'visibility', layerConfig.active ? 'visible' : 'none');
                 }
@@ -377,23 +398,26 @@
                     map.setLayoutProperty('viirs-areas', 'visibility', layerConfig.active ? 'visible' : 'none');
                 }
 
-                // Gerir legendas
-                if (currentRiskLegend) {
-                    currentRiskLegend.remove();
-                    currentRiskLegend = null;
+                // Handle legend visibility: only show if its layer is active
+                if (layerConfig.category === 'risk') {
+                    if (layerConfig.active) {
+                        addRiskLegend();
+                    } else if (currentRiskLegend) {
+                        currentRiskLegend.remove();
+                        currentRiskLegend = null;
+                    }
+                } else if (layerConfig.category === 'weather') {
+                    if (layerConfig.active && layerConfig.legend && weatherLegendsData[layerConfig.legend]) {
+                        const legendInfo = weatherLegendsData[layerConfig.legend];
+                        generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
+                    } else if (currentWeatherLegend) {
+                        currentWeatherLegend.remove();
+                        currentWeatherLegend = null;
+                    }
                 }
-                if (currentWeatherLegend) {
-                    currentWeatherLegend.remove();
-                    currentWeatherLegend = null;
-                }
-
-                // Adicionar legenda se a camada estiver ativa
-                if (layerConfig.active && layerConfig.legend === 'risk') {
-                    addRiskLegend(map);
-                } else if (layerConfig.active && layerConfig.legend && weatherLegendsData[layerConfig.legend]) {
-                    const legendInfo = weatherLegendsData[layerConfig.legend];
-                    generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
-                }
+                // For 'fire' or 'satellite' categories, no legends are directly associated, so do nothing.
+                // The previous logic to remove both legends for these categories is removed
+                // to allow risk/weather legends to persist if their layers remain active.
             };
             customLayerControl.appendChild(button);
             overlayButtons[layerKey] = button;
@@ -402,21 +426,19 @@
 
 
     function addWeatherLayers() {
-        const appId = '89ae8b33d0bde5d8a89a7f5550e87869'; // Mantenha o seu ID OpenWeatherMap
+        const appId = '89ae8b33d0bde5d8a89a7f5550e87869';
 
         for (const layerName in weatherLayerMapping) {
             const weatherKey = weatherLayerMapping[layerName];
             const sourceId = `weather-${weatherKey}-source`;
             const layerId = `weather-${weatherKey}`;
 
-            // Adicionar fonte de raster para cada camada meteorológica
             map.addSource(sourceId, {
                 type: 'raster',
                 tiles: [`http://maps.openweathermap.org/maps/2.0/weather/${weatherKey}/{z}/{x}/{y}?appid=${appId}`],
                 tileSize: 256
             });
 
-            // Adicionar camada de raster, inicialmente invisível
             map.addLayer({
                 id: layerId,
                 type: 'raster',
@@ -425,43 +447,73 @@
                     'raster-opacity': 0.7
                 },
                 layout: {
-                    'visibility': 'none' // Invisível por defeito
+                    'visibility': 'none'
                 }
             });
 
-            // Adicionar a camada aos controlos de overlay
             overlayLayers[layerName] = {
                 id: layerId,
                 type: 'raster',
                 source: sourceId,
-                icon: 'img/weather.png', // Ícone genérico para meteorologia
+                icon: 'img/weather.png',
                 legend: weatherKey,
-                active: false
+                active: false,
+                category: 'weather'
             };
-            // Se os controlos já estiverem configurados, adicionar o botão
+
             if (customLayerControl.childElementCount > 0) {
                 const button = document.createElement('button');
                 button.innerHTML = `<img src="${overlayLayers[layerName].icon}"> ${layerName}`;
                 button.className = overlayLayers[layerName].active ? 'active' : '';
+                button.dataset.category = overlayLayers[layerName].category;
+                button.dataset.layerId = overlayLayers[layerName].id;
+
                 button.onclick = () => {
-                    overlayLayers[layerName].active = !overlayLayers[layerName].active;
-                    button.classList.toggle('active', overlayLayers[layerName].active);
+                    const clickedCategory = button.dataset.category;
+                    const clickedLayerId = button.dataset.layerId;
+                    let newActiveState;
+
+                    if (button.classList.contains('active')) {
+                        newActiveState = false;
+                    } else {
+                        newActiveState = true;
+                    }
+
+                    for (const key in overlayLayers) {
+                        const currentLayer = overlayLayers[key];
+                        if (currentLayer.category === clickedCategory && currentLayer.id !== clickedLayerId) {
+                            currentLayer.active = false;
+                            if (overlayButtons[key]) {
+                                overlayButtons[key].classList.remove('active');
+                            }
+                            if (map.getLayer(currentLayer.id)) {
+                                map.setLayoutProperty(currentLayer.id, 'visibility', 'none');
+                            }
+                        }
+                    }
+
+                    overlayLayers[layerName].active = newActiveState;
+                    button.classList.toggle('active', newActiveState);
                     map.setLayoutProperty(layerId, 'visibility', overlayLayers[layerName].active ? 'visible' : 'none');
 
-                    // Gerir legendas
-                    if (currentRiskLegend) {
-                        currentRiskLegend.remove();
-                        currentRiskLegend = null;
+                    // Handle legend visibility: only show if its layer is active
+                    if (overlayLayers[layerName].category === 'risk') {
+                        if (overlayLayers[layerName].active) {
+                            addRiskLegend();
+                        } else if (currentRiskLegend) {
+                            currentRiskLegend.remove();
+                            currentRiskLegend = null;
+                        }
+                    } else if (overlayLayers[layerName].category === 'weather') {
+                        if (overlayLayers[layerName].active && overlayLayers[layerName].legend && weatherLegendsData[overlayLayers[layerName].legend]) {
+                            const legendInfo = weatherLegendsData[overlayLayers[layerName].legend];
+                            generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
+                        } else if (currentWeatherLegend) {
+                            currentWeatherLegend.remove();
+                            currentWeatherLegend = null;
+                        }
                     }
-                    if (currentWeatherLegend) {
-                        currentWeatherLegend.remove();
-                        currentWeatherLegend = null;
-                    }
-
-                    if (overlayLayers[layerName].active && overlayLayers[layerName].legend && weatherLegendsData[overlayLayers[layerName].legend]) {
-                        const legendInfo = weatherLegendsData[overlayLayers[layerName].legend];
-                        generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
-                    }
+                    // For other categories, no specific legend handling here.
                 };
                 customLayerControl.appendChild(button);
                 overlayButtons[layerName] = button;
@@ -549,7 +601,7 @@
             const size = sizeFactor * baseSize;
 
             const el = document.createElement('div');
-            el.className = 'fire-marker'; // Classe para estilização global se necessário
+            el.className = 'fire-marker';
             el.innerHTML = iconHtml;
             el.style.width = `${size}px`;
             el.style.height = `${size}px`;
@@ -561,11 +613,11 @@
                 .setLngLat([lng, lat])
                 .addTo(mapInstance);
 
-            currentFireMarkers[fireId] = marker; // Armazenar o marcador para fácil acesso
+            currentFireMarkers[fireId] = marker;
 
             el.addEventListener('click', (e) => {
-                e.stopPropagation(); // Previne o clique do mapa de fechar o sidebar
-                const activeIcon = el.querySelector('.dot'); // O ícone dentro do div do marcador Mapbox
+                e.stopPropagation();
+                const activeIcon = el.querySelector('.dot');
                 const previouslyActiveIcon = document.querySelector('.dot-active');
 
                 if (previouslyActiveIcon && previouslyActiveIcon !== activeIcon) {
@@ -573,7 +625,7 @@
                     previouslyActiveIcon.classList.remove('dot-active');
                 }
 
-                changeElementSizeById(fireId, 48 + sizeFactor); // Aumentar o tamanho
+                changeElementSizeById(fireId, 48 + sizeFactor);
                 activeIcon.classList.add('dot-active');
                 mapInstance.flyTo({ center: [lng, lat], zoom: 10 });
 
@@ -776,46 +828,75 @@
                             type: 'fill',
                             source: sourceId,
                             paint: {
-                                'fill-color': ['get', 'fillColor'], // Usa a propriedade fillColor do GeoJSON
+                                'fill-color': ['get', 'fillColor'],
                                 'fill-opacity': 0.6,
                                 'fill-outline-color': '#666'
                             },
                             layout: {
-                                'visibility': 'none' // Invisível por defeito
+                                'visibility': 'none'
                             }
                         });
-                        // Adicionar a camada aos controlos de overlay, se ainda não estiver lá
                         if (!overlayLayers[key]) {
                             overlayLayers[key] = {
                                 id: layerId,
                                 type: 'fill',
                                 source: sourceId,
                                 icon: 'img/fire_risk.png',
-                                legend: 'risk', // Todas as camadas de risco usam a mesma legenda
-                                active: false
+                                legend: 'risk',
+                                active: false,
+                                category: 'risk'
                             };
-                            // Adicionar botão ao controlo personalizado
                             if (customLayerControl.childElementCount > 0) {
                                 const button = document.createElement('button');
                                 button.innerHTML = `<img src="${overlayLayers[key].icon}"> ${key}`;
                                 button.className = overlayLayers[key].active ? 'active' : '';
+                                button.dataset.category = overlayLayers[key].category;
+                                button.dataset.layerId = overlayLayers[key].id;
+
                                 button.onclick = () => {
-                                    overlayLayers[key].active = !overlayLayers[key].active;
-                                    button.classList.toggle('active', overlayLayers[key].active);
+                                    const clickedCategory = button.dataset.category;
+                                    const clickedLayerId = button.dataset.layerId;
+                                    let newActiveState;
+
+                                    if (button.classList.contains('active')) {
+                                        newActiveState = false;
+                                    } else {
+                                        newActiveState = true;
+                                    }
+
+                                    for (const currentKey in overlayLayers) {
+                                        const currentLayer = overlayLayers[currentKey];
+                                        if (currentLayer.category === clickedCategory && currentLayer.id !== clickedLayerId) {
+                                            currentLayer.active = false;
+                                            if (overlayButtons[currentKey]) {
+                                                overlayButtons[currentKey].classList.remove('active');
+                                            }
+                                            if (map.getLayer(currentLayer.id)) {
+                                                map.setLayoutProperty(currentLayer.id, 'visibility', 'none');
+                                            }
+                                        }
+                                    }
+
+                                    overlayLayers[key].active = newActiveState;
+                                    button.classList.toggle('active', newActiveState);
                                     map.setLayoutProperty(layerId, 'visibility', overlayLayers[key].active ? 'visible' : 'none');
 
-                                    // Gerir legendas
-                                    if (currentRiskLegend) {
-                                        currentRiskLegend.remove();
-                                        currentRiskLegend = null;
-                                    }
-                                    if (currentWeatherLegend) {
-                                        currentWeatherLegend.remove();
-                                        currentWeatherLegend = null;
-                                    }
-
-                                    if (overlayLayers[key].active && overlayLayers[key].legend === 'risk') {
-                                        addRiskLegend(map);
+                                    // Handle legend visibility: only show if its layer is active
+                                    if (overlayLayers[key].category === 'risk') {
+                                        if (overlayLayers[key].active) {
+                                            addRiskLegend();
+                                        } else if (currentRiskLegend) {
+                                            currentRiskLegend.remove();
+                                            currentRiskLegend = null;
+                                        }
+                                    } else if (overlayLayers[key].category === 'weather') {
+                                        if (overlayLayers[key].active && overlayLayers[key].legend && weatherLegendsData[overlayLayers[key].legend]) {
+                                            const legendInfo = weatherLegendsData[overlayLayers[key].legend];
+                                            generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
+                                        } else if (currentWeatherLegend) {
+                                            currentWeatherLegend.remove();
+                                            currentWeatherLegend = null;
+                                        }
                                     }
                                 };
                                 customLayerControl.appendChild(button);
@@ -829,7 +910,6 @@
             } else if (type === 'firesResult') {
                 loader.innerText = 'A adicionar novos dados de incêndios...';
 
-                // Remover marcadores existentes antes de adicionar novos
                 for (const fireId in currentFireMarkers) {
                     currentFireMarkers[fireId].remove();
                 }
@@ -842,7 +922,6 @@
                 const res = window.location.href.match(/\?fogo\=(\d+)/);
                 if (res && res[1]) {
                     const fireIdFromUrl = res[1];
-                    // Ativa o clique no marcador após um pequeno atraso para garantir que tudo está renderizado
                     setTimeout(() => {
                         const fireElement = document.getElementById(fireIdFromUrl);
                         if (fireElement) {
@@ -850,11 +929,11 @@
                         }
                     }, 500);
                 }
-                // Marcar a camada de incêndios como processada e visível por defeito no controlo
                 if (overlayButtons['Fires']) {
                     overlayLayers['Fires'].active = true;
                     overlayButtons['Fires'].classList.add('active');
                 }
+                // No explicit legend removal here, allowing risk/weather legends to persist
                 checkAllDataProcessed();
             } else if (type === 'error') {
                 const errorMessage = document.createElement('div');
