@@ -37,14 +37,14 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2000;
-    background: var(--loader-bg);
+    background-color: var(--loader-bg);
     padding: 20px 30px;
     border-radius: 8px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-    font-size: 1.1em;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    font-size: 1.2em;
+    font-weight: bold;
     color: var(--text-color);
-    text-align: center;
+    z-index: 1000;
 }
 
 .error-message {
@@ -52,21 +52,17 @@ body {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #cb333b;
+    background-color: #dc3545;
     color: white;
     padding: 10px 20px;
     border-radius: 5px;
-    z-index: 2001;
-    animation: fadeInOut 5s forwards;
-    text-align: center;
+    z-index: 1001;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    animation: fadeOut 5s forwards;
 }
 
-@keyframes fadeInOut {
+@keyframes fadeOut {
     0% {
-        opacity: 0;
-    }
-
-    10% {
         opacity: 1;
     }
 
@@ -76,55 +72,8 @@ body {
 
     100% {
         opacity: 0;
+        display: none;
     }
-}
-
-/* Custom legend styles for Mapbox */
-/* Base legend styling */
-.mapbox-legend {
-    background: white;
-    padding: 10px 12px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px var(--shadow-color);
-    line-height: 22px;
-    color: var(--text-color);
-    font-size: 0.9em;
-    position: absolute; /* Changed to absolute for independent positioning */
-    z-index: 100;
-}
-
-/* Specific positioning for Risk Legend */
-.mapbox-risk-legend {
-    bottom: 20px;
-    right: 10px;
-}
-
-/* Specific positioning for Weather Legend when risk is also present */
-.mapbox-weather-legend {
-    bottom: 20px;
-    right: 170px; /* Position to the left of the risk legend */
-}
-
-/* Specific positioning for Weather Legend when it's alone */
-.mapbox-weather-legend-alone {
-    bottom: 20px;
-    right: 10px; /* Closer to the corner when no risk legend */
-}
-
-.mapbox-legend h4 {
-    margin: 0 0 8px;
-    color: #555;
-    font-size: 1.1em;
-    font-weight: 600;
-}
-
-.mapbox-legend i {
-    width: 18px;
-    height: 18px;
-    float: left;
-    margin-right: 10px;
-    opacity: 0.85;
-    border-radius: 3px;
 }
 
 .sidebar {
@@ -286,13 +235,6 @@ canvas#myChart {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* Styles for fire markers on Mapbox */
-.mapboxgl-marker.fire-marker {
-    background: none;
-    border: none;
-    cursor: pointer;
 }
 
 .dot {
@@ -474,17 +416,36 @@ canvas#myChart {
     content: attr(data-status);
 }
 
-/* Layer Control styles */
+/* CUSTOM CONTROLS */
 .mapboxgl-ctrl-group.custom-controls {
+    display: flex;
+    flex-direction: column;
     background-color: var(--panel-bg);
     border-radius: 8px;
     box-shadow: 0 4px 12px var(--shadow-color);
     padding: 5px;
     margin: 10px;
+    min-width: 180px;
+    /* Manter a largura mínima */
+    max-width: 300px;
+    /* Aumentar a largura máxima para acomodar mais texto */
+}
+
+.mapboxgl-ctrl-group.custom-controls button {
+    width: auto;
+}
+
+.mapboxgl-ctrl-group.custom-controls .layer-category-title {
+    font-weight: bold;
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 1em;
+}
+
+.mapboxgl-ctrl-group.custom-controls .overlay-buttons-container {
     display: flex;
     flex-direction: column;
-    min-width: 180px;
-    max-width: 250px;
 }
 
 .mapboxgl-ctrl-group.custom-controls button {
@@ -510,27 +471,94 @@ canvas#myChart {
     background-color: #f0f0f0;
 }
 
+.mapboxgl-ctrl-group.custom-controls button.active {
+    font-weight: bold;
+    color: var(--button-bg);
+    background-color: #e6f2ff;
+    /* Light blue background for active */
+}
+
 .mapboxgl-ctrl-group.custom-controls button img {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     margin-right: 8px;
 }
 
-.mapboxgl-ctrl-group.custom-controls .layer-category-title {
-    font-weight: bold;
-    padding: 8px;
-    color: #555;
-    font-size: 1em;
-    border-bottom: 1px solid var(--border-color);
+.mapboxgl-ctrl-compass {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
 }
 
-/* Active state for layer control buttons */
-.mapboxgl-ctrl-group.custom-controls button.active {
-    font-weight: bold;
-    background-color: #e6f7ff; /* A subtle background to indicate active */
-    color: #007bff; /* A distinct color */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib {
+    display: none !important;
 }
 
-.mapboxgl-ctrl-group button {
-    width: auto;
+.mapbox-legend {
+    background-color: var(--panel-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    padding: 10px;
+    margin: 10px;
+    font-size: 0.9em;
+    color: var(--text-color);
+    position: absolute;
+    bottom: 0;
+    left: 10px;
+    z-index: 1;
+}
+
+.mapbox-risk-legend {
+    bottom: 10px;
+    left: 10px;
+    max-width: 150px;
+}
+
+.mapbox-weather-legend {
+    bottom: 10px;
+    left: 170px;
+    /* Ajuste para ficar ao lado da legenda de risco */
+    max-width: 180px;
+}
+
+.mapbox-weather-legend-alone {
+    bottom: 10px;
+    left: 10px;
+    max-width: 180px;
+}
+
+.mapbox-legend h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.mapbox-legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.8;
+}
+
+.mapbox-legend i.Reduzido {
+    background: #509e2f;
+}
+
+.mapbox-legend i.Moderado {
+    background: #ffe900;
+}
+
+.mapbox-legend i.Elevado {
+    background: #e87722;
+}
+
+.mapbox-legend i.Muito.Elevado {
+    background: #cb333b;
+}
+
+.mapbox-legend i.Máximo {
+    background: #6f263d;
 }
