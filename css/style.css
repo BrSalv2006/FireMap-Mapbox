@@ -429,6 +429,8 @@ canvas#myChart {
     /* Manter a largura mínima */
     max-width: 300px;
     /* Aumentar a largura máxima para acomodar mais texto */
+        max-height: 90vh; /* Set a maximum height relative to the viewport height */
+    overflow-y: auto; /* Enable vertical scrolling */
 }
 
 .mapboxgl-ctrl-group.custom-controls button {

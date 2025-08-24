@@ -55,8 +55,8 @@
         map.on('load', () => {
             setupCustomLayerControls();
             addWeatherLayers();
-            fetchAndApplyDynamicLayers(); // Chamada inicial para carregar dados dinâmicos
-            rebuildOverlayControls(); // Inicializa os botões de overlay
+            fetchAndApplyDynamicLayers();
+            rebuildOverlayControls();
         });
 
         map.on('click', () => {
@@ -275,22 +275,47 @@
                 currentWeatherLegend = null;
             }
             map.once('styledata', () => {
-                addWeatherLayers(); // Garante que todas as definições de camadas de meteorologia estejam em overlayLayers
-                fetchAndApplyDynamicLayers(); // Recarrega dados de satélite e risco, populando overlayLayers
-                reapplyOverlayLayers(); // Reaplica camadas ativas ao mapa
-                rebuildOverlayControls(); // Recria os botões com base no overlayLayers totalmente populado
+                addWeatherLayers();
+                fetchAndApplyDynamicLayers();
+                reapplyOverlayLayers();
+                rebuildOverlayControls();
             });
         };
         customLayerControl.appendChild(button);
     }
 
-    const overlayLayerToggle = document.createElement('div');
-    overlayLayerToggle.className = 'layer-category-title';
-    overlayLayerToggle.textContent = 'Camadas Adicionais';
-    const overlayButtonsContainer = document.createElement('div');
-    overlayButtonsContainer.className = 'overlay-buttons-container';
-    customLayerControl.appendChild(overlayLayerToggle);
-    customLayerControl.appendChild(overlayButtonsContainer);
+    // New containers for different overlay categories
+    const fireControls = document.createElement('div');
+    fireControls.className = 'layer-category-container';
+    fireControls.innerHTML = '<div class="layer-category-title">Incêndios</div>';
+    const fireButtonsContainer = document.createElement('div');
+    fireButtonsContainer.className = 'overlay-buttons-container';
+    fireControls.appendChild(fireButtonsContainer);
+    customLayerControl.appendChild(fireControls);
+
+    const satelliteControls = document.createElement('div');
+    satelliteControls.className = 'layer-category-container';
+    satelliteControls.innerHTML = '<div class="layer-category-title">Satélite</div>';
+    const satelliteButtonsContainer = document.createElement('div');
+    satelliteButtonsContainer.className = 'overlay-buttons-container';
+    satelliteControls.appendChild(satelliteButtonsContainer);
+    customLayerControl.appendChild(satelliteControls);
+
+    const riskControls = document.createElement('div');
+    riskControls.className = 'layer-category-container';
+    riskControls.innerHTML = '<div class="layer-category-title">Risco de Incêndio</div>';
+    const riskButtonsContainer = document.createElement('div');
+    riskButtonsContainer.className = 'overlay-buttons-container';
+    riskControls.appendChild(riskButtonsContainer);
+    customLayerControl.appendChild(riskControls);
+
+    const weatherControls = document.createElement('div');
+    weatherControls.className = 'layer-category-container';
+    weatherControls.innerHTML = '<div class="layer-category-title">Meteorologia</div>';
+    const weatherButtonsContainer = document.createElement('div');
+    weatherButtonsContainer.className = 'overlay-buttons-container';
+    weatherControls.appendChild(weatherButtonsContainer);
+    customLayerControl.appendChild(weatherControls);
 
 
     const overlayLayers = {
@@ -339,7 +364,11 @@
     }
 
     function rebuildOverlayControls() {
-        overlayButtonsContainer.innerHTML = '';
+        fireButtonsContainer.innerHTML = '';
+        satelliteButtonsContainer.innerHTML = '';
+        riskButtonsContainer.innerHTML = '';
+        weatherButtonsContainer.innerHTML = '';
+
         for (const key in overlayButtons) {
             delete overlayButtons[key];
         }
@@ -373,6 +402,13 @@
                             }
                             if (map.getLayer(currentLayer.id)) {
                                 map.setLayoutProperty(currentLayer.id, 'visibility', 'none');
+                            }
+                            // Specific handling for satellite areas when modis/viirs are toggled
+                            if (currentLayer.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
+                                map.setLayoutProperty('modis-areas', 'visibility', 'none');
+                            }
+                            if (currentLayer.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
+                                map.setLayoutProperty('viirs-areas', 'visibility', 'none');
                             }
                         }
                     }
@@ -412,14 +448,24 @@
                     }
                 }
             };
-            overlayButtonsContainer.appendChild(button);
+            
+            // Append button to the correct container based on category
+            if (layerConfig.category === 'fire') {
+                fireButtonsContainer.appendChild(button);
+            } else if (layerConfig.category === 'satellite') {
+                satelliteButtonsContainer.appendChild(button);
+            } else if (layerConfig.category === 'risk') {
+                riskButtonsContainer.appendChild(button);
+            } else if (layerConfig.category === 'weather') {
+                weatherButtonsContainer.appendChild(button);
+            }
+            
             overlayButtons[layerKey] = button;
         }
     }
 
 
     function reapplyOverlayLayers() {
-        console.log('Reapplying overlay layers...');
         let activeRiskLayerKey = null;
         for (const layerKey in overlayLayers) {
             const layerConfig = overlayLayers[layerKey];
@@ -447,7 +493,6 @@
         for (const layerKey in overlayLayers) {
             const layerConfig = overlayLayers[layerKey];
             if (layerConfig.active) {
-                console.log(`Processing active layer: ${layerKey} (${layerConfig.category})`);
                 if (layerConfig.category === 'fire') {
                     for (const fireId in currentFireMarkers) {
                         currentFireMarkers[fireId].remove();
@@ -458,42 +503,32 @@
                     if (layerConfig.id === 'modis-hotspots' && layerConfig.hotspotData) {
                         if (!map.getSource('modis-hotspots-data')) {
                             map.addSource('modis-hotspots-data', { type: 'geojson', data: layerConfig.hotspotData });
-                            console.log('Added MODIS hotspots source.');
                         }
                         if (layerConfig.areaData && !map.getSource('modis-areas-data')) {
                             map.addSource('modis-areas-data', { type: 'geojson', data: layerConfig.areaData });
-                            console.log('Added MODIS areas source.');
                         }
                         if (!map.getLayer('modis-hotspots')) {
                             map.addLayer({ id: 'modis-hotspots', type: 'circle', source: 'modis-hotspots-data', paint: { 'circle-radius': 5, 'circle-color': '#ff0000', 'circle-stroke-color': '#fff', 'circle-stroke-width': 1, 'circle-opacity': 0.8 }, layout: { 'visibility': 'visible' } });
-                            console.log('Added MODIS hotspots layer.');
                         }
                         if (layerConfig.areaData && !map.getLayer('modis-areas')) {
                             map.addLayer({ id: 'modis-areas', type: 'fill', source: 'modis-areas-data', paint: { 'fill-color': '#ff0000', 'fill-opacity': 0.2, 'fill-outline-color': '#ff0000' }, layout: { 'visibility': 'visible' } });
-                            console.log('Added MODIS areas layer.');
                         }
-                        // Explicitly set visibility in case layers already existed but were hidden
                         if (map.getLayer('modis-hotspots')) map.setLayoutProperty('modis-hotspots', 'visibility', 'visible');
                         if (map.getLayer('modis-areas')) map.setLayoutProperty('modis-areas', 'visibility', 'visible');
                     }
                     if (layerConfig.id === 'viirs-hotspots' && layerConfig.hotspotData) {
                         if (!map.getSource('viirs-hotspots-data')) {
                             map.addSource('viirs-hotspots-data', { type: 'geojson', data: layerConfig.hotspotData });
-                            console.log('Added VIIRS hotspots source.');
                         }
                         if (layerConfig.areaData && !map.getSource('viirs-areas-data')) {
                             map.addSource('viirs-areas-data', { type: 'geojson', data: layerConfig.areaData });
-                            console.log('Added VIIRS areas source.');
                         }
                         if (!map.getLayer('viirs-hotspots')) {
                             map.addLayer({ id: 'viirs-hotspots', type: 'circle', source: 'viirs-hotspots-data', paint: { 'circle-radius': 5, 'circle-color': '#ff0000', 'circle-stroke-color': '#fff', 'circle-stroke-width': 1, 'circle-opacity': 0.8 }, layout: { 'visibility': 'visible' } });
-                            console.log('Added VIIRS hotspots layer.');
                         }
                         if (layerConfig.areaData && !map.getLayer('viirs-areas')) {
                             map.addLayer({ id: 'viirs-areas', type: 'fill', source: 'viirs-areas-data', paint: { 'fill-color': '#ff0000', 'fill-opacity': 0.2, 'fill-outline-color': '#ff0000' }, layout: { 'visibility': 'visible' } });
-                            console.log('Added VIIRS areas layer.');
                         }
-                        // Explicitly set visibility
                         if (map.getLayer('viirs-hotspots')) map.setLayoutProperty('viirs-hotspots', 'visibility', 'visible');
                         if (map.getLayer('viirs-areas')) map.setLayoutProperty('viirs-areas', 'visibility', 'visible');
                     }
@@ -503,7 +538,6 @@
                             type: 'geojson',
                             data: layerConfig.sourceData
                         });
-                        console.log(`Added risk source: ${layerConfig.source}`);
                     }
                     if (!map.getLayer(layerConfig.id)) {
                         map.addLayer({
@@ -519,9 +553,7 @@
                                 'visibility': 'visible'
                             }
                         });
-                        console.log(`Added risk layer: ${layerConfig.id}`);
                     }
-                    // Explicitly set visibility
                     if (map.getLayer(layerConfig.id)) map.setLayoutProperty(layerConfig.id, 'visibility', 'visible');
                     addRiskLegend();
                 } else if (layerConfig.category === 'weather') {
@@ -536,7 +568,6 @@
                             tiles: [`http://maps.openweathermap.org/maps/2.0/weather/${weatherKey}/{z}/{x}/{y}?appid=${appId}`],
                             tileSize: 256
                         });
-                        console.log(`Added weather source: ${sourceId}`);
                     }
                     if (!map.getLayer(layerId)) {
                         map.addLayer({
@@ -550,9 +581,7 @@
                                 'visibility': 'visible'
                             }
                         });
-                        console.log(`Added weather layer: ${layerId}`);
                     }
-                    // Explicitly set visibility
                     if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'visible');
                     if (layerConfig.legend && weatherLegendsData[layerConfig.legend]) {
                         const legendInfo = weatherLegendsData[layerConfig.legend];
@@ -560,30 +589,23 @@
                     }
                 }
             } else {
-                // If a layer is NOT active, ensure its visibility is set to 'none'
                 if (map.getLayer(layerConfig.id)) {
                     map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
-                    console.log(`Set visibility to 'none' for inactive layer: ${layerConfig.id}`);
                 }
-                // Handle satellite areas specifically
                 if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
                     map.setLayoutProperty('modis-areas', 'visibility', 'none');
-                    console.log(`Set visibility to 'none' for inactive MODIS areas.`);
                 }
                 if (layerConfig.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
                     map.setLayoutProperty('viirs-areas', 'visibility', 'none');
-                    console.log(`Set visibility to 'none' for inactive VIIRS areas.`);
                 }
             }
         }
     }
 
-    // New function to fetch and apply dynamic layers (satellite and risk)
     function fetchAndApplyDynamicLayers() {
-        console.log('Fetching and applying dynamic layers...');
         currentWorker.postMessage({ type: 'satelliteData', dayRange: 1 });
         currentWorker.postMessage({ type: 'riskData' });
-        currentWorker.postMessage({ type: 'firesData' }); // Also fetch fire data
+        currentWorker.postMessage({ type: 'firesData' });
     }
 
 
@@ -595,7 +617,6 @@
             const sourceId = `weather-${weatherKey}-source`;
             const layerId = `weather-${weatherKey}`;
 
-            // Ensure source is added
             if (!map.getSource(sourceId)) {
                 map.addSource(sourceId, {
                     type: 'raster',
@@ -604,7 +625,6 @@
                 });
             }
 
-            // Ensure layer is added
             if (!map.getLayer(layerId)) {
                 map.addLayer({
                     id: layerId,
@@ -619,7 +639,6 @@
                 });
             }
 
-            // Ensure overlayLayers object has the entry, preserving active state if it existed
             if (!overlayLayers[layerName]) {
                 overlayLayers[layerName] = {
                     id: layerId,
@@ -627,11 +646,10 @@
                     source: sourceId,
                     icon: 'img/weather.png',
                     legend: weatherKey,
-                    active: false, // Initial state should be inactive
+                    active: false,
                     category: 'weather'
                 };
             }
-            // If it already exists, its active state is already managed by click handlers.
         }
     }
 
@@ -918,7 +936,6 @@
                 loader.innerText = message;
             } else if (type === 'initDataComplete') {
                 loader.innerText = 'Dados geográficos carregados. A obter dados de incêndios e risco...';
-                // Chamar fetchAndApplyDynamicLayers aqui também, mas sem firesData para evitar duplicidade
                 currentWorker.postMessage({ type: 'satelliteData', dayRange: 1 });
                 currentWorker.postMessage({ type: 'riskData' });
             } else if (type === 'satelliteResult') {
@@ -931,6 +948,7 @@
                     overlayLayers['VIIRS Hotspots'].areaData = { type: 'FeatureCollection', features: (data.viirs.areas && data.viirs.areas.features) ? data.viirs.areas.features : [] };
                 }
                 addSatelliteLayers(data);
+                rebuildOverlayControls(); // Rebuild controls after satellite data is processed
             } else if (type === 'riskResult') {
                 loader.innerText = 'A adicionar camadas de risco...';
                 let newRiskLayerActivated = false;
@@ -1024,6 +1042,7 @@
                     overlayLayers['Fires'].sourceData = data;
                 }
                 checkAllDataProcessed();
+                rebuildOverlayControls(); // Rebuild controls after fire data is processed
             } else if (type === 'error') {
                 const errorMessage = document.createElement('div');
                 errorMessage.className = 'error-message';
