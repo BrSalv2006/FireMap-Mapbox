@@ -9,7 +9,7 @@
     const loader = document.getElementById('loader');
     let satelliteDataProcessed = false;
     let riskDataProcessed = false;
-    let currentFireMarkers = {};
+    let allFireMarkersByStatus = {};
 
     const baseSize = 22;
 
@@ -65,8 +65,8 @@
             if (previouslyActiveIcon) {
                 changeElementSizeById(previouslyActiveIcon.id, baseSize);
                 previouslyActiveIcon.classList.remove('dot-active');
+                map.flyTo({ center: [-7.8536599, 39.557191], zoom: 6 });
             }
-            map.flyTo({ center: [-7.8536599, 39.557191], zoom: 6 });
 
             document.body.classList.remove('sidebar-open');
             document.querySelector('.sidebar').classList.remove('active');
@@ -138,6 +138,7 @@
         map.on('click', `${type}-hotspots`, (e) => {
             const p = e.features[0].properties;
             const popupContent = `<b>Brilho:</b> ${p.brightness}K<br><b>Data, Hora:</b> ${p.acq_date}<br><b>Satélite:</b> ${p.satellite}<br><b>Confiança:</b> ${p.confidence}<br><b>Dia/Noite:</b> ${p.daynight}<br><b>PRF:</b> ${p.frp}MW`;
+            map.flyTo({ center: e.lngLat, zoom: 12 });
             new mapboxgl.Popup()
                 .setLngLat(e.features[0].geometry.coordinates)
                 .setHTML(popupContent)
@@ -334,18 +335,21 @@
     weatherControls.appendChild(weatherButtonsContainer);
     customLayerControl.appendChild(weatherControls);
 
+    const fireStatusLayers = {
+        'Despacho': { statusCode: 3, icon: 'img/fire.png', defaultActive: true },
+        'Despacho de 1º Alerta': { statusCode: 4, icon: 'img/fire.png', defaultActive: true },
+        'Em Curso': { statusCode: 5, icon: 'img/fire.png', defaultActive: true },
+        'Chegada ao TO': { statusCode: 6, icon: 'img/fire.png', defaultActive: true },
+        'Em Resolução': { statusCode: 7, icon: 'img/fire.png', defaultActive: true },
+        'Conclusão': { statusCode: 8, icon: 'img/fire.png', defaultActive: false },
+        'Vigilância': { statusCode: 9, icon: 'img/fire.png', defaultActive: false },
+        'Encerrada': { statusCode: 10, icon: 'img/fire.png', defaultActive: false },
+        'Falso Alarme': { statusCode: 11, icon: 'img/fire.png', defaultActive: false },
+        'Falso Alerta': { statusCode: 12, icon: 'img/fire.png', defaultActive: false }
+    };
 
     const overlayLayers = {
-        'Fires': {
-            id: 'fires-layer',
-            type: 'symbol',
-            source: 'fires-data',
-            icon: 'img/fire.png',
-            active: true,
-            category: 'fire',
-            sourceData: null
-        },
-        'MODIS Hotspots': {
+        'MODIS': {
             id: 'modis-hotspots',
             type: 'circle',
             source: 'modis-hotspots-data',
@@ -355,7 +359,7 @@
             hotspotData: null,
             areaData: null
         },
-        'VIIRS Hotspots': {
+        'VIIRS': {
             id: 'viirs-hotspots',
             type: 'circle',
             source: 'viirs-hotspots-data',
@@ -366,6 +370,20 @@
             areaData: null
         }
     };
+
+    for (const statusName in fireStatusLayers) {
+        const statusConfig = fireStatusLayers[statusName];
+        overlayLayers[`Incêndios - ${statusName}`] = {
+            id: `fires-status-${statusConfig.statusCode}-layer`,
+            type: 'symbol',
+            source: `fires-status-${statusConfig.statusCode}-data`,
+            icon: statusConfig.icon,
+            active: statusConfig.defaultActive,
+            category: 'fire-status',
+            statusCode: statusConfig.statusCode,
+            sourceData: []
+        };
+    }
 
     const overlayButtons = {};
 
@@ -397,6 +415,9 @@
             button.className = layerConfig.active ? 'active' : '';
             button.dataset.category = layerConfig.category;
             button.dataset.layerId = layerConfig.id;
+            if (layerConfig.statusCode) {
+                button.dataset.statusCode = layerConfig.statusCode;
+            }
 
             button.onclick = () => {
                 const clickedCategory = button.dataset.category;
@@ -420,12 +441,6 @@
                             if (map.getLayer(currentLayer.id)) {
                                 map.setLayoutProperty(currentLayer.id, 'visibility', 'none');
                             }
-                            if (currentLayer.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
-                                map.setLayoutProperty('modis-areas', 'visibility', 'none');
-                            }
-                            if (currentLayer.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
-                                map.setLayoutProperty('viirs-areas', 'visibility', 'none');
-                            }
                         }
                     }
                 }
@@ -433,15 +448,27 @@
                 layerConfig.active = newActiveState;
                 button.classList.toggle('active', newActiveState);
 
-                if (map.getLayer(layerConfig.id)) {
-                    map.setLayoutProperty(layerConfig.id, 'visibility', layerConfig.active ? 'visible' : 'none');
+                if (clickedCategory === 'fire-status') {
+                    const statusCode = parseInt(button.dataset.statusCode);
+                    if (allFireMarkersByStatus[statusCode]) {
+                        allFireMarkersByStatus[statusCode].forEach(marker => {
+                            if (marker.getElement()) {
+                                marker.getElement().style.display = newActiveState ? 'block' : 'none';
+                            }
+                        });
+                    }
+                } else {
+                    if (map.getLayer(layerConfig.id)) {
+                        map.setLayoutProperty(layerConfig.id, 'visibility', layerConfig.active ? 'visible' : 'none');
+                    }
+                    if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
+                        map.setLayoutProperty('modis-areas', 'visibility', layerConfig.active ? 'visible' : 'none');
+                    }
+                    if (layerConfig.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
+                        map.setLayoutProperty('viirs-areas', 'visibility', layerConfig.active ? 'visible' : 'none');
+                    }
                 }
-                if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
-                    map.setLayoutProperty('modis-areas', 'visibility', layerConfig.active ? 'visible' : 'none');
-                }
-                if (layerConfig.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
-                    map.setLayoutProperty('viirs-areas', 'visibility', layerConfig.active ? 'visible' : 'none');
-                }
+
 
                 if (layerConfig.category === 'risk') {
                     if (layerConfig.active) {
@@ -465,7 +492,7 @@
                 }
             };
 
-            if (layerConfig.category === 'fire') {
+            if (layerConfig.category === 'fire-status') {
                 fireButtonsContainer.appendChild(button);
             } else if (layerConfig.category === 'satellite') {
                 satelliteButtonsContainer.appendChild(button);
@@ -508,12 +535,15 @@
         for (const layerKey in overlayLayers) {
             const layerConfig = overlayLayers[layerKey];
             if (layerConfig.active) {
-                if (layerConfig.category === 'fire') {
-                    for (const fireId in currentFireMarkers) {
-                        currentFireMarkers[fireId].remove();
+                if (layerConfig.category === 'fire-status') {
+                    const statusCode = layerConfig.statusCode;
+                    if (allFireMarkersByStatus[statusCode]) {
+                        allFireMarkersByStatus[statusCode].forEach(marker => {
+                            if (marker.getElement()) {
+                                marker.getElement().style.display = 'block';
+                            }
+                        });
                     }
-                    currentFireMarkers = {};
-                    currentWorker.postMessage({ type: 'firesData' });
                 } else if (layerConfig.category === 'satellite') {
                     if (layerConfig.id === 'modis-hotspots' && layerConfig.hotspotData) {
                         if (!map.getSource('modis-hotspots-data')) {
@@ -573,7 +603,7 @@
                     addRiskLegend();
                 } else if (layerConfig.category === 'weather') {
                     const appId = '89ae8b33d0bde5d8a89a7f5550e87869';
-                    const weatherKey = weatherLayerMapping[layerKey];
+                    const weatherKey = weatherLayerMapping[layerKey.replace('Meteorologia - ', '')];
                     const sourceId = `weather-${weatherKey}-source`;
                     const layerId = `weather-${weatherKey}`;
 
@@ -604,14 +634,25 @@
                     }
                 }
             } else {
-                if (map.getLayer(layerConfig.id)) {
-                    map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
-                }
-                if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
-                    map.setLayoutProperty('modis-areas', 'visibility', 'none');
-                }
-                if (layerConfig.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
-                    map.setLayoutProperty('viirs-areas', 'visibility', 'none');
+                if (layerConfig.category === 'fire-status') {
+                    const statusCode = layerConfig.statusCode;
+                    if (allFireMarkersByStatus[statusCode]) {
+                        allFireMarkersByStatus[statusCode].forEach(marker => {
+                            if (marker.getElement()) {
+                                marker.getElement().style.display = 'none';
+                            }
+                        });
+                    }
+                } else {
+                    if (map.getLayer(layerConfig.id)) {
+                        map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
+                    }
+                    if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
+                        map.setLayoutProperty('modis-areas', 'visibility', 'none');
+                    }
+                    if (layerConfig.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
+                        map.setLayoutProperty('viirs-areas', 'visibility', 'none');
+                    }
                 }
             }
         }
@@ -654,8 +695,8 @@
                 });
             }
 
-            if (!overlayLayers[layerName]) {
-                overlayLayers[layerName] = {
+            if (!overlayLayers[`Meteorologia - ${layerName}`]) {
+                overlayLayers[`Meteorologia - ${layerName}`] = {
                     id: layerId,
                     type: 'raster',
                     source: sourceId,
@@ -725,33 +766,47 @@
     }
 
     function addFireMarker(fire, mapInstance, fireImportanceData) {
-        const { lat, lng, status, id: fireId } = fire;
+        const { lat, lng, id: fireId } = fire;
+        const statusCode = fire.statusCode;
+        const statusConfig = Object.values(fireStatusLayers).find(s => s.statusCode === statusCode);
 
-        if (lat && lng && status) {
+        if (!statusConfig) {
+            console.warn(`Estado do incêndio desconhecido: ${statusCode}`);
+            return;
+        }
+
+        if (lat && lng) {
             let iconHtml = `<i class="dot status-`;
-            if (fire.important && [7, 8, 9].includes(fire.statusCode)) {
+            if (fire.important && [7, 8, 9].includes(statusCode)) {
                 iconHtml += '99-r';
             } else if (fire.important) {
                 iconHtml += '99';
             } else {
-                iconHtml += fire.statusCode;
+                iconHtml += statusCode;
             }
 
             const isActive = window.location.href.match(/\?fogo\=(\d+)/);
+            let isInitiallyActive = false;
             if (isActive && isActive[1] == fireId) {
                 iconHtml += ' dot-active';
                 mapInstance.flyTo({ center: [lng, lat], zoom: 9 });
+                isInitiallyActive = true;
             }
 
             iconHtml += `" id="${fireId}"></i>`;
-            const sizeFactor = getPonderatedImportanceFactor(fire.importance, fire.statusCode, fireImportanceData);
-            const size = sizeFactor * baseSize;
+            const sizeFactor = getPonderatedImportanceFactor(fire.importance, statusCode, fireImportanceData);
+            const size = isInitiallyActive ? 48 + sizeFactor : sizeFactor * baseSize;
 
             const el = document.createElement('div');
             el.className = 'fire-marker';
             el.innerHTML = iconHtml;
             el.style.width = `${size}px`;
             el.style.height = `${size}px`;
+
+            const layerKey = `Incêndios - ${Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode)}`;
+            if (overlayLayers[layerKey] && !overlayLayers[layerKey].active) {
+                el.style.display = 'none';
+            }
 
             const marker = new mapboxgl.Marker({
                 element: el,
@@ -760,7 +815,10 @@
                 .setLngLat([lng, lat])
                 .addTo(mapInstance);
 
-            currentFireMarkers[fireId] = marker;
+            if (!allFireMarkersByStatus[statusCode]) {
+                allFireMarkersByStatus[statusCode] = [];
+            }
+            allFireMarkersByStatus[statusCode].push(marker);
 
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -820,7 +878,7 @@
 
             const canvas = document.getElementById('myChart');
             if (!canvas) {
-                console.error('Canvas element #myChart not found.');
+                console.error('Elemento canvas #myChart não encontrado.');
                 return;
             }
             const ctx = canvas.getContext('2d');
@@ -871,7 +929,7 @@
                 canvas.style.display = 'none';
             }
         } catch (error) {
-            console.error('Error fetching fire data for plot:', error);
+            console.error('Erro ao obter dados de incêndio para o gráfico:', error);
             const canvas = document.getElementById('myChart');
             if (detailsChart) {
                 detailsChart.destroy();
@@ -888,7 +946,7 @@
             const response = await fetch(`https://fogos.pt/views/status/${id}`);
             document.querySelector('.f-status').innerHTML = await response.text();
         } catch (error) {
-            console.error('Error fetching fire status:', error);
+            console.error('Erro ao obter estado do incêndio:', error);
         }
     }
 
@@ -906,7 +964,7 @@
                 dangerRow.classList.remove('active');
             }
         } catch (error) {
-            console.error('Error fetching danger info:', error);
+            console.error('Erro ao obter informações de risco:', error);
         }
     }
 
@@ -915,7 +973,7 @@
             const response = await fetch(`https://fogos.pt/views/meteo/${id}`);
             document.querySelector('.f-meteo').innerHTML = await response.text();
         } catch (error) {
-            console.error('Error fetching meteo info:', error);
+            console.error('Erro ao obter informações meteorológicas:', error);
         }
     }
 
@@ -933,7 +991,7 @@
                 extraRow.classList.remove('active');
             }
         } catch (error) {
-            console.error('Error fetching extra info:', error);
+            console.error('Erro ao obter informações extras:', error);
         }
     }
 
@@ -962,12 +1020,12 @@
                 currentWorker.postMessage({ type: 'riskData' });
             } else if (type === 'satelliteResult') {
                 if (data.modis) {
-                    overlayLayers['MODIS Hotspots'].hotspotData = { type: 'FeatureCollection', features: data.modis.points || [] };
-                    overlayLayers['MODIS Hotspots'].areaData = { type: 'FeatureCollection', features: (data.modis.areas && data.modis.areas.features) ? data.modis.areas.features : [] };
+                    overlayLayers['MODIS'].hotspotData = { type: 'FeatureCollection', features: data.modis.points || [] };
+                    overlayLayers['MODIS'].areaData = { type: 'FeatureCollection', features: (data.modis.areas && data.modis.areas.features) ? data.modis.areas.features : [] };
                 }
                 if (data.viirs) {
-                    overlayLayers['VIIRS Hotspots'].hotspotData = { type: 'FeatureCollection', features: data.viirs.points || [] };
-                    overlayLayers['VIIRS Hotspots'].areaData = { type: 'FeatureCollection', features: (data.viirs.areas && data.viirs.areas.features) ? data.viirs.areas.features : [] };
+                    overlayLayers['VIIRS'].hotspotData = { type: 'FeatureCollection', features: data.viirs.points || [] };
+                    overlayLayers['VIIRS'].areaData = { type: 'FeatureCollection', features: (data.viirs.areas && data.viirs.areas.features) ? data.viirs.areas.features : [] };
                 }
                 addSatelliteLayers(data);
                 rebuildOverlayControls();
@@ -1039,10 +1097,10 @@
             } else if (type === 'firesResult') {
                 loader.innerText = 'A adicionar novos dados de incêndios...';
 
-                for (const fireId in currentFireMarkers) {
-                    currentFireMarkers[fireId].remove();
+                for (const statusCode in allFireMarkersByStatus) {
+                    allFireMarkersByStatus[statusCode].forEach(marker => marker.remove());
                 }
-                currentFireMarkers = {};
+                allFireMarkersByStatus = {};
 
                 for (const fire of data) {
                     addFireMarker(fire, map, fireImportanceData);
@@ -1052,16 +1110,18 @@
                 if (res && res[1]) {
                     const fireIdFromUrl = res[1];
                     setTimeout(() => {
-                        const fireElement = document.getElementById(fireIdFromUrl);
-                        if (fireElement) {
-                            fireElement.click();
+                        let targetMarkerElement = null;
+                        for (const statusCode in allFireMarkersByStatus) {
+                            const marker = allFireMarkersByStatus[statusCode].find(m => m.getElement().id === fireIdFromUrl);
+                            if (marker) {
+                                targetMarkerElement = marker.getElement();
+                                break;
+                            }
+                        }
+                        if (targetMarkerElement) {
+                            targetMarkerElement.click();
                         }
                     }, 500);
-                }
-                if (overlayButtons['Fires']) {
-                    overlayLayers['Fires'].active = true;
-                    overlayButtons['Fires'].classList.add('active');
-                    overlayLayers['Fires'].sourceData = data;
                 }
                 checkAllDataProcessed();
                 rebuildOverlayControls();
@@ -1071,9 +1131,9 @@
                 errorMessage.textContent = message;
                 document.body.appendChild(errorMessage);
                 setTimeout(() => errorMessage.remove(), 5000);
-                if (message.includes("fire data")) {
+                if (message.includes("dados de incêndio")) {
                     satelliteDataProcessed = true;
-                } else if (message.includes("risk layers") || message.includes("Concelhos GeoJSON")) {
+                } else if (message.includes("camadas de risco") || message.includes("Concelhos GeoJSON")) {
                     riskDataProcessed = true;
                 }
                 checkAllDataProcessed();
@@ -1108,7 +1168,7 @@
         } catch (error) {
             const errorMessage = document.createElement('div');
             errorMessage.className = 'error-message';
-            errorMessage.textContent = `Error loading weather legends: ${error.message}`;
+            errorMessage.textContent = `Erro ao carregar legendas meteorológicas: ${error.message}`;
             document.body.appendChild(errorMessage);
             setTimeout(() => errorMessage.remove(), 5000);
         }
