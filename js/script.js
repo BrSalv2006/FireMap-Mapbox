@@ -73,8 +73,8 @@
                 'tileSize': 512,
                 'maxzoom': 14
             });
-            // Initial terrain setting (no exaggeration by default, controlled by overlay later)
-            map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1 }); // Removed exaggeration, set to 1 for no exaggeration
+            // Terrain is initially off; it will be enabled only when the user selects the "Terreno 3D" overlay.
+            map.setTerrain(null);
 
             // Add 3D buildings layer
             const layers = map.getStyle().layers;
@@ -398,7 +398,6 @@
     weatherControls.appendChild(weatherButtonsContainer);
     customLayerControl.appendChild(weatherControls);
 
-    // New 3D controls section
     const threeDControls = document.createElement('div');
     threeDControls.className = 'layer-category-container';
     threeDControls.innerHTML = '<div class="layer-category-title">Visualização 3D</div>';
@@ -406,7 +405,6 @@
     threeDButtonsContainer.className = 'overlay-buttons-container';
     threeDControls.appendChild(threeDButtonsContainer);
     customLayerControl.appendChild(threeDControls);
-
 
     const fireStatusLayers = {
         'Despacho': { statusCode: 3, icon: 'img/fire.png', defaultActive: true },
@@ -443,17 +441,17 @@
             areaData: null
         },
         'Terreno 3D': {
-            id: 'mapbox-dem-terrain-control', // A unique ID for the control button
+            id: 'mapbox-dem-terrain-control',
             type: 'terrain',
-            icon: 'img/map.png', // Generic icon
-            active: false, // Initially inactive
+            icon: 'img/map.png',
+            active: false,
             category: '3d-feature'
         },
         'Edifícios 3D': {
-            id: 'add-3d-buildings', // Actual Mapbox layer ID
+            id: 'add-3d-buildings',
             type: 'fill-extrusion',
-            icon: 'img/map.png', // Generic icon
-            active: false, // Initially inactive
+            icon: 'img/map.png',
+            active: false,
             category: '3d-feature'
         }
     };
@@ -490,7 +488,7 @@
         satelliteButtonsContainer.innerHTML = '';
         riskButtonsContainer.innerHTML = '';
         weatherButtonsContainer.innerHTML = '';
-        threeDButtonsContainer.innerHTML = ''; // Clear 3D buttons
+        threeDButtonsContainer.innerHTML = '';
 
         for (const key in overlayButtons) {
             delete overlayButtons[key];
@@ -587,9 +585,7 @@
                             }
                             // Specific handling for terrain and buildings
                             if (currentLayer.id === 'mapbox-dem-terrain-control') {
-                                if (map.getTerrain()) { // Check if terrain is active
-                                    map.setTerrain(null); // Disable terrain
-                                }
+                                map.setTerrain(null); // Disable terrain
                             } else if (map.getLayer(currentLayer.id)) {
                                 map.setLayoutProperty(currentLayer.id, 'visibility', 'none'); // Hide building layer
                             }
@@ -602,19 +598,17 @@
 
                     if (newActiveState) {
                         if (clickedLayerId === 'mapbox-dem-terrain-control') {
-                            if (map.getSource('mapbox-dem')) { // Ensure source exists before setting terrain
+                            // Ensure source exists before setting terrain
+                            if (map.getSource('mapbox-dem')) {
                                 map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1 }); // Enable terrain
                             }
-                            if (map.getLayer('add-3d-buildings')) {
-                                map.setLayoutProperty('add-3d-buildings', 'visibility', 'none'); // Ensure buildings are off
-                            }
                         } else if (clickedLayerId === 'add-3d-buildings') {
-                            map.setTerrain(null); // Disable terrain
+                            // Ensure terrain is off when buildings are enabled
+                            map.setTerrain(null);
                             if (map.getLayer('add-3d-buildings')) {
                                 map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible'); // Enable buildings
                             }
                         }
-                        console.log(layerConfig)
                     } else {
                         // If deactivating, turn off the specific feature
                         if (clickedLayerId === 'mapbox-dem-terrain-control') {
@@ -770,6 +764,39 @@
                         const legendInfo = weatherLegendsData[layerConfig.legend];
                         generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
                     }
+                } else if (layerConfig.category === '3d-feature') {
+                    // Introduce a slight delay to ensure the style is fully parsed and rendered
+                    setTimeout(() => {
+                        if (layerConfig.id === 'mapbox-dem-terrain-control') {
+                            if (layerConfig.active) {
+                                if (map.getSource('mapbox-dem')) {
+                                    map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1 });
+                                } else {
+                                    console.warn('mapbox-dem source not found when trying to activate 3D terrain.');
+                                }
+                                // Ensure buildings are off if terrain is active
+                                if (map.getLayer('add-3d-buildings')) {
+                                    map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
+                                }
+                            } else {
+                                map.setTerrain(null); // Explicitly disable if not active
+                            }
+                        } else if (layerConfig.id === 'add-3d-buildings') {
+                            if (layerConfig.active) {
+                                if (map.getLayer('add-3d-buildings')) {
+                                    map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible');
+                                } else {
+                                    console.warn('add-3d-buildings layer not found when trying to activate 3D buildings.');
+                                }
+                                // Ensure terrain is off if buildings are active
+                                map.setTerrain(null);
+                            } else {
+                                if (map.getLayer('add-3d-buildings')) {
+                                    map.setLayoutProperty('add-3d-buildings', 'visibility', 'none'); // Explicitly disable if not active
+                                }
+                            }
+                        }
+                    }, 100); // Small delay, e.g., 100ms
                 }
             } else if (layerConfig.category === 'fire-status') {
                 const statusCode = layerConfig.statusCode;
@@ -782,13 +809,16 @@
                 }
 
             } else if (layerConfig.category === '3d-feature') {
-                if (layerConfig.id === 'mapbox-dem-terrain-control') {
-                    map.setTerrain(null);
-                } else if (layerConfig.id === 'add-3d-buildings') {
-                    if (map.getLayer('add-3d-buildings')) {
-                        map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
+                // Ensure 3D features are turned off if their layerConfig is not active
+                setTimeout(() => {
+                    if (layerConfig.id === 'mapbox-dem-terrain-control') {
+                        map.setTerrain(null);
+                    } else if (layerConfig.id === 'add-3d-buildings') {
+                        if (map.getLayer('add-3d-buildings')) {
+                            map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
+                        }
                     }
-                }
+                }, 100);
             } else {
                 if (map.getLayer(layerConfig.id)) {
                     map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
