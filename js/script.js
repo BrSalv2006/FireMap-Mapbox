@@ -60,6 +60,69 @@
             updateBaseLayerButtonState('Streets');
         });
 
+        map.on('style.load', () => {
+            // Set default fog if the style doesn't have one
+            if (!map.getStyle().fog) {
+                map.setFog({});
+            }
+
+            // Add 3D terrain source
+            map.addSource('mapbox-dem', {
+                'type': 'raster-dem',
+                'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                'tileSize': 512,
+                'maxzoom': 14
+            });
+            // Initial terrain setting (no exaggeration by default, controlled by overlay later)
+            map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1 }); // Removed exaggeration, set to 1 for no exaggeration
+
+            // Add 3D buildings layer
+            const layers = map.getStyle().layers;
+            const labelLayerId = layers.find(
+                (layer) => layer.type === 'symbol' && layer.layout['text-field']
+            ).id;
+
+            map.addLayer(
+                {
+                    'id': 'add-3d-buildings',
+                    'source': 'composite',
+                    'source-layer': 'building',
+                    'filter': ['==', 'extrude', 'true'],
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'paint': {
+                        'fill-extrusion-color': '#aaa',
+
+                        'fill-extrusion-height': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'height']
+                        ],
+                        'fill-extrusion-base': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'min_height']
+                        ],
+                        'fill-extrusion-opacity': 0.6
+                    }
+                },
+                labelLayerId
+            );
+
+            // Initially set buildings visibility to none, to be controlled by overlay
+            if (map.getLayer('add-3d-buildings')) {
+                map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
+            }
+        });
+
         map.on('click', () => {
             const previouslyActiveIcon = document.querySelector('.dot-active');
             if (previouslyActiveIcon) {
@@ -335,6 +398,16 @@
     weatherControls.appendChild(weatherButtonsContainer);
     customLayerControl.appendChild(weatherControls);
 
+    // New 3D controls section
+    const threeDControls = document.createElement('div');
+    threeDControls.className = 'layer-category-container';
+    threeDControls.innerHTML = '<div class="layer-category-title">Visualização 3D</div>';
+    const threeDButtonsContainer = document.createElement('div');
+    threeDButtonsContainer.className = 'overlay-buttons-container';
+    threeDControls.appendChild(threeDButtonsContainer);
+    customLayerControl.appendChild(threeDControls);
+
+
     const fireStatusLayers = {
         'Despacho': { statusCode: 3, icon: 'img/fire.png', defaultActive: true },
         'Despacho de 1º Alerta': { statusCode: 4, icon: 'img/fire.png', defaultActive: true },
@@ -368,6 +441,20 @@
             category: 'satellite',
             hotspotData: null,
             areaData: null
+        },
+        'Terreno 3D': {
+            id: 'mapbox-dem-terrain-control', // A unique ID for the control button
+            type: 'terrain',
+            icon: 'img/map.png', // Generic icon
+            active: false, // Initially inactive
+            category: '3d-feature'
+        },
+        'Edifícios 3D': {
+            id: 'add-3d-buildings', // Actual Mapbox layer ID
+            type: 'fill-extrusion',
+            icon: 'img/map.png', // Generic icon
+            active: false, // Initially inactive
+            category: '3d-feature'
         }
     };
 
@@ -403,6 +490,7 @@
         satelliteButtonsContainer.innerHTML = '';
         riskButtonsContainer.innerHTML = '';
         weatherButtonsContainer.innerHTML = '';
+        threeDButtonsContainer.innerHTML = ''; // Clear 3D buttons
 
         for (const key in overlayButtons) {
             delete overlayButtons[key];
@@ -469,7 +557,6 @@
                     }
                 }
 
-
                 if (layerConfig.category === 'risk') {
                     if (layerConfig.active) {
                         addRiskLegend();
@@ -489,6 +576,55 @@
                         currentWeatherLegend.remove();
                         currentWeatherLegend = null;
                     }
+                } else if (layerConfig.category === '3d-feature') {
+                    // Make 3D features mutually exclusive
+                    for (const key in overlayLayers) {
+                        const currentLayer = overlayLayers[key];
+                        if (currentLayer.category === '3d-feature' && currentLayer.id !== clickedLayerId) {
+                            currentLayer.active = false;
+                            if (overlayButtons[key]) {
+                                overlayButtons[key].classList.remove('active');
+                            }
+                            // Specific handling for terrain and buildings
+                            if (currentLayer.id === 'mapbox-dem-terrain-control') {
+                                if (map.getTerrain()) { // Check if terrain is active
+                                    map.setTerrain(null); // Disable terrain
+                                }
+                            } else if (map.getLayer(currentLayer.id)) {
+                                map.setLayoutProperty(currentLayer.id, 'visibility', 'none'); // Hide building layer
+                            }
+                        }
+                    }
+
+                    // Apply active state for the clicked 3D feature
+                    layerConfig.active = newActiveState;
+                    button.classList.toggle('active', newActiveState);
+
+                    if (newActiveState) {
+                        if (clickedLayerId === 'mapbox-dem-terrain-control') {
+                            if (map.getSource('mapbox-dem')) { // Ensure source exists before setting terrain
+                                map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1 }); // Enable terrain
+                            }
+                            if (map.getLayer('add-3d-buildings')) {
+                                map.setLayoutProperty('add-3d-buildings', 'visibility', 'none'); // Ensure buildings are off
+                            }
+                        } else if (clickedLayerId === 'add-3d-buildings') {
+                            map.setTerrain(null); // Disable terrain
+                            if (map.getLayer('add-3d-buildings')) {
+                                map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible'); // Enable buildings
+                            }
+                        }
+                        console.log(layerConfig)
+                    } else {
+                        // If deactivating, turn off the specific feature
+                        if (clickedLayerId === 'mapbox-dem-terrain-control') {
+                            map.setTerrain(null);
+                        } else if (clickedLayerId === 'add-3d-buildings') {
+                            if (map.getLayer('add-3d-buildings')) {
+                                map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
+                            }
+                        }
+                    }
                 }
             }, { passive: true });
 
@@ -500,6 +636,8 @@
                 riskButtonsContainer.appendChild(button);
             } else if (layerConfig.category === 'weather') {
                 weatherButtonsContainer.appendChild(button);
+            } else if (layerConfig.category === '3d-feature') {
+                threeDButtonsContainer.appendChild(button);
             }
 
             overlayButtons[layerKey] = button;
@@ -633,26 +771,33 @@
                         generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
                     }
                 }
+            } else if (layerConfig.category === 'fire-status') {
+                const statusCode = layerConfig.statusCode;
+                if (allFireMarkersByStatus[statusCode]) {
+                    allFireMarkersByStatus[statusCode].forEach(marker => {
+                        if (marker.getElement()) {
+                            marker.getElement().style.display = 'none';
+                        }
+                    });
+                }
+
+            } else if (layerConfig.category === '3d-feature') {
+                if (layerConfig.id === 'mapbox-dem-terrain-control') {
+                    map.setTerrain(null);
+                } else if (layerConfig.id === 'add-3d-buildings') {
+                    if (map.getLayer('add-3d-buildings')) {
+                        map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
+                    }
+                }
             } else {
-                if (layerConfig.category === 'fire-status') {
-                    const statusCode = layerConfig.statusCode;
-                    if (allFireMarkersByStatus[statusCode]) {
-                        allFireMarkersByStatus[statusCode].forEach(marker => {
-                            if (marker.getElement()) {
-                                marker.getElement().style.display = 'none';
-                            }
-                        });
-                    }
-                } else {
-                    if (map.getLayer(layerConfig.id)) {
-                        map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
-                    }
-                    if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
-                        map.setLayoutProperty('modis-areas', 'visibility', 'none');
-                    }
-                    if (layerConfig.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
-                        map.setLayoutProperty('viirs-areas', 'visibility', 'none');
-                    }
+                if (map.getLayer(layerConfig.id)) {
+                    map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
+                }
+                if (layerConfig.id === 'modis-hotspots' && map.getLayer('modis-areas')) {
+                    map.setLayoutProperty('modis-areas', 'visibility', 'none');
+                }
+                if (layerConfig.id === 'viirs-hotspots' && map.getLayer('viirs-areas')) {
+                    map.setLayoutProperty('viirs-areas', 'visibility', 'none');
                 }
             }
         }
