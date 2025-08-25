@@ -10,6 +10,7 @@
     let satelliteDataProcessed = false;
     let riskDataProcessed = false;
     let allFireMarkersByStatus = {};
+    let dayNightInterval = null;
 
     const baseSize = 22;
 
@@ -58,6 +59,7 @@
             fetchAndApplyDynamicLayers();
             rebuildOverlayControls();
             updateBaseLayerButtonState('Streets');
+            updateDayNightLayer();
         });
 
         map.on('style.load', () => {
@@ -355,6 +357,9 @@
                 fetchAndApplyDynamicLayers();
                 reapplyOverlayLayers();
                 rebuildOverlayControls();
+                if (overlayLayers['Ciclo Dia/Noite'].active) {
+                    updateDayNightLayer();
+                }
             });
         }, { passive: true });
         baseLayerButtonsContainer.appendChild(button);
@@ -400,6 +405,14 @@
     threeDButtonsContainer.className = 'overlay-buttons-container';
     threeDControls.appendChild(threeDButtonsContainer);
     customLayerControl.appendChild(threeDControls);
+
+    const dayNightControls = document.createElement('div');
+    dayNightControls.className = 'layer-category-container';
+    dayNightControls.innerHTML = '<div class="layer-category-title">Ciclo Dia/Noite</div>';
+    const dayNightButtonsContainer = document.createElement('div');
+    dayNightButtonsContainer.className = 'overlay-buttons-container';
+    dayNightControls.appendChild(dayNightButtonsContainer);
+    customLayerControl.appendChild(dayNightControls);
 
     const fireStatusLayers = {
         'Despacho': { statusCode: 3, icon: 'img/fire.png', defaultActive: true },
@@ -448,6 +461,15 @@
             icon: 'img/map.png',
             active: false,
             category: '3d-feature'
+        },
+        'Ciclo Dia/Noite': {
+            id: 'day-night-layer',
+            type: 'fill',
+            source: 'day-night-data',
+            icon: 'img/night.png',
+            active: false,
+            category: 'day-night',
+            sourceData: null
         }
     };
 
@@ -484,6 +506,7 @@
         riskButtonsContainer.innerHTML = '';
         weatherButtonsContainer.innerHTML = '';
         threeDButtonsContainer.innerHTML = '';
+        dayNightButtonsContainer.innerHTML = '';
 
         for (const key in overlayButtons) {
             delete overlayButtons[key];
@@ -608,6 +631,17 @@
                             }
                         }
                     }
+                } else if (clickedCategory === 'day-night') {
+                    if (newActiveState) {
+                        updateDayNightLayer();
+                        dayNightInterval = setInterval(updateDayNightLayer, 5 * 60 * 1000); // Update every 5 minutes
+                    } else {
+                        clearInterval(dayNightInterval);
+                        dayNightInterval = null;
+                        if (map.getLayer('day-night-layer')) {
+                            map.setLayoutProperty('day-night-layer', 'visibility', 'none');
+                        }
+                    }
                 }
             }, { passive: true });
 
@@ -621,9 +655,207 @@
                 weatherButtonsContainer.appendChild(button);
             } else if (layerConfig.category === '3d-feature') {
                 threeDButtonsContainer.appendChild(button);
+            } else if (layerConfig.category === 'day-night') {
+                dayNightButtonsContainer.appendChild(button);
             }
 
             overlayButtons[layerKey] = button;
+        }
+    }
+
+    function calculateDayNightPolygon() {
+        if (typeof SunCalc === 'undefined') {
+            console.error('SunCalc library not loaded.');
+            return {
+                type: "Feature",
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [[
+                        [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]
+                    ]]
+                },
+                properties: {}
+            };
+        }
+
+        const now = new Date();
+        const terminator = [];
+        const nSamples = 180; // Number of latitude samples from -90 to 90
+        const UTCHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+
+        // Get sun's declination for current time
+        const sunPositionAtEquator = SunCalc.getPosition(now, 0, 0);
+        const solarDeclination = sunPositionAtEquator.declination; // Radians
+
+        const getSunAltitude = (lat, lon) => {
+            const pos = SunCalc.getPosition(now, lat * Math.PI / 180, lon * Math.PI / 180);
+            return pos.altitude; // Radians
+        };
+
+        // Trace the terminator from South to North Pole
+        for (let i = 0; i <= nSamples; i++) {
+            const latRad = (-90 + (180 / nSamples) * i) * Math.PI / 180; // Latitude in radians
+            const latDeg = latRad * 180 / Math.PI;
+
+            // Calculate hour angle (H) using the formula for zenith angle = 90 (terminator)
+            // cos(H) = -tan(phi)tan(delta)
+            let cosH;
+            // Handle edge cases where tan(lat) or tan(declination) might be undefined or very large
+            if (Math.abs(Math.cos(latRad)) < 1e-6) { // At poles (cos(lat) ~ 0)
+                cosH = 0; // Approximated
+            } else if (Math.abs(solarDeclination) < 1e-6) { // Near equinox (declination ~ 0)
+                 cosH = 0; // Approximated
+            } else {
+                cosH = -Math.tan(latRad) * Math.tan(solarDeclination);
+            }
+            
+            // Clamp cosH to valid range [-1, 1] to avoid Math.acos errors
+            cosH = Math.max(-1, Math.min(1, cosH));
+            const H_rad = Math.acos(cosH); // Hour angle in radians
+
+            // Longitude of solar noon (sun's meridian) for current UTC time
+            // Every hour difference from UTC 0 (Greenwich) is 15 degrees longitude
+            const solarNoonLon = (UTCHours - 12) * 15; // Degrees
+
+            // Calculate two longitudes for the terminator at this latitude:
+            // One for 'sunrise' side, one for 'sunset' side
+            const lon1 = solarNoonLon - (H_rad * 180 / Math.PI); // Longitude for current point
+            const lon2 = solarNoonLon + (H_rad * 180 / Math.PI); // Longitude for current point
+
+            // Normalize longitudes to -180 to 180
+            const normalizeLon = (lon) => ((lon + 540) % 360) - 180;
+
+            // Check if this latitude is experiencing 24-hour day or night
+            if (Math.abs(solarDeclination) + Math.abs(latRad) >= Math.PI / 2 + 0.01) { // Polar day/night
+                const times = SunCalc.getTimes(now, latDeg, 0); // Get times for current latitude at Greenwich
+                const sunriseAltitude = getSunAltitude(latDeg, times.sunrise.getUTCHours() * 15);
+                const sunsetAltitude = getSunAltitude(latDeg, times.sunset.getUTCHours() * 15);
+            
+                if (sunriseAltitude > 0 && sunsetAltitude > 0) { // 24-hour day, entire latitude is bright
+                    // Do not add terminator points for this latitude
+                    continue; 
+                } else if (sunriseAltitude < 0 && sunsetAltitude < 0) { // 24-hour night, entire latitude is dark
+                    terminator.push([normalizeLon(lon1), latDeg]);
+                    terminator.push([normalizeLon(lon2), latDeg]);
+                }
+            } else {
+                 terminator.push([normalizeLon(lon1), latDeg]);
+                 terminator.push([normalizeLon(lon2), latDeg]);
+            }
+        }
+
+        // Sort points by longitude to ensure proper polygon formation
+        terminator.sort((a, b) => a[0] - b[0]);
+
+        const nightPolygonCoords = [];
+        let poleAdded = false;
+
+        // Add points to form a closed polygon for the night side
+        if (solarDeclination < 0) { // Southern Hemisphere summer, North Pole is in darkness
+            nightPolygonCoords.push([-180, 90]); // NW corner
+            terminator.forEach(p => {
+                if (p[1] >= -90 && p[1] <= 90) nightPolygonCoords.push(p);
+            });
+            nightPolygonCoords.push([180, 90]); // NE corner
+            nightPolygonCoords.push([-180, 90]); // Close polygon
+            poleAdded = true;
+        } else if (solarDeclination > 0) { // Northern Hemisphere summer, South Pole is in darkness
+            nightPolygonCoords.push([-180, -90]); // SW corner
+            terminator.forEach(p => {
+                if (p[1] >= -90 && p[1] <= 90) nightPolygonCoords.push(p);
+            });
+            nightPolygonCoords.push([180, -90]); // SE corner
+            nightPolygonCoords.push([-180, -90]); // Close polygon
+            poleAdded = true;
+        } else { // Equinox, both poles have terminator crossing
+            // If the sun is generally on the "left" (west) side of the prime meridian
+            const sunLonOffset = (UTCHours - 12) * 15;
+            if (sunLonOffset < 0) { // Sun is west of Prime Meridian, night side is more eastern
+                 nightPolygonCoords.push([-180, 90]);
+                 terminator.forEach(p => {
+                     if (p[1] >= -90 && p[1] <= 90) nightPolygonCoords.push(p);
+                 });
+                 nightPolygonCoords.push([180, 90]);
+                 nightPolygonCoords.push([180, -90]);
+                 nightPolygonCoords.push([-180, -90]);
+                 nightPolygonCoords.push([-180, 90]); // Close polygon
+            } else { // Sun is east of Prime Meridian, night side is more western
+                 nightPolygonCoords.push([-180, -90]);
+                 terminator.forEach(p => {
+                     if (p[1] >= -90 && p[1] <= 90) nightPolygonCoords.push(p);
+                 });
+                 nightPolygonCoords.push([180, -90]);
+                 nightPolygonCoords.push([180, 90]);
+                 nightPolygonCoords.push([-180, 90]);
+                 nightPolygonCoords.push([-180, -90]); // Close polygon
+            }
+            poleAdded = true;
+        }
+
+
+        // Fallback for full day/full night conditions (e.g., extreme polar conditions or if terminator is empty)
+        if (terminator.length === 0 && Math.abs(solarDeclination) >= (80 * Math.PI / 180)) { // ~80 degrees declination
+            const sunAltitudeAtNorthPole = getSunAltitude(90, 0); // Check altitude at North Pole
+            const sunAltitudeAtSouthPole = getSunAltitude(-90, 0); // Check altitude at South Pole
+
+            if (sunAltitudeAtNorthPole > 0 && sunAltitudeAtSouthPole > 0) { // Global day
+                 return { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]] }, properties: { day: true } }; // Effectively a transparent overlay
+            } else if (sunAltitudeAtNorthPole < 0 && sunAltitudeAtSouthPole < 0) { // Global night
+                 return { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]] }, properties: { night: true } }; // Full dark overlay
+            }
+        }
+
+
+        // Final sanity check for coordinates
+        const validCoords = nightPolygonCoords.filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+
+        if (validCoords.length < 3) {
+            console.warn('Não há pontos válidos suficientes para formar um polígono dia/noite. A retornar predefinição.');
+            return {
+                type: "Feature",
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [[
+                        [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]
+                    ]]
+                },
+                properties: {}
+            };
+        }
+
+        return {
+            type: "Feature",
+            geometry: {
+                type: "Polygon",
+                coordinates: [validCoords]
+            },
+            properties: {}
+        };
+    }
+
+    function updateDayNightLayer() {
+        const dayNightGeoJSON = calculateDayNightPolygon();
+        overlayLayers['Ciclo Dia/Noite'].sourceData = dayNightGeoJSON;
+
+        if (overlayLayers['Ciclo Dia/Noite'].active) {
+            if (!map.getSource('day-night-data')) {
+                map.addSource('day-night-data', {
+                    type: 'geojson',
+                    data: dayNightGeoJSON
+                });
+                map.addLayer({
+                    id: 'day-night-layer',
+                    type: 'fill',
+                    source: 'day-night-data',
+                    paint: {
+                        'fill-color': '#000',
+                        'fill-opacity': 0.4
+                    }
+                });
+            } else {
+                map.getSource('day-night-data').setData(dayNightGeoJSON);
+            }
+            map.setLayoutProperty('day-night-layer', 'visibility', 'visible');
         }
     }
 
@@ -783,6 +1015,10 @@
                             }
                         }
                     }, 100);
+                } else if (layerConfig.category === 'day-night') {
+                    if (layerConfig.active) {
+                        updateDayNightLayer();
+                    }
                 }
             } else if (layerConfig.category === 'fire-status') {
                 const statusCode = layerConfig.statusCode;
@@ -804,6 +1040,12 @@
                         }
                     }
                 }, 100);
+            } else if (layerConfig.category === 'day-night') {
+                if (map.getLayer('day-night-layer')) {
+                    map.setLayoutProperty('day-night-layer', 'visibility', 'none');
+                }
+                clearInterval(dayNightInterval);
+                dayNightInterval = null;
             } else {
                 if (map.getLayer(layerConfig.id)) {
                     map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
@@ -1132,7 +1374,7 @@
         try {
             const response = await fetch(`https://fogos.pt/views/meteo/${id}`);
             document.querySelector('.f-meteo').innerHTML = await response.text();
-        } catch (error) {
+        }  catch (error) {
             console.error('Erro ao obter informações meteorológicas:', error);
         }
     }
