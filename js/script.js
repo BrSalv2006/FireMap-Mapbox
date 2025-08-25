@@ -281,7 +281,7 @@
     for (const layerName in baseLayers) {
         const button = document.createElement('button');
         button.innerHTML = `<img src="img/map.png"> ${layerName}`;
-        button.onclick = () => {
+        button.addEventListener('click', () => {
             map.setStyle(baseLayers[layerName]);
             updateBaseLayerButtonState(layerName);
             if (currentRiskLegend) {
@@ -298,7 +298,7 @@
                 reapplyOverlayLayers();
                 rebuildOverlayControls();
             });
-        };
+        }, { passive: true });
         baseLayerButtonsContainer.appendChild(button);
         baseLayerButtons[layerName] = button;
     }
@@ -419,7 +419,7 @@
                 button.dataset.statusCode = layerConfig.statusCode;
             }
 
-            button.onclick = () => {
+            button.addEventListener('click', () => {
                 const clickedCategory = button.dataset.category;
                 const clickedLayerId = button.dataset.layerId;
                 let newActiveState;
@@ -490,7 +490,7 @@
                         currentWeatherLegend = null;
                     }
                 }
-            };
+            }, { passive: true });
 
             if (layerConfig.category === 'fire-status') {
                 fireButtonsContainer.appendChild(button);
@@ -864,7 +864,7 @@
                 danger(fireId);
                 meteo(fireId);
                 extra(fireId);
-            });
+            }, { passive: true });
         }
     }
 
