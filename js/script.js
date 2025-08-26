@@ -363,7 +363,14 @@
                     map.setConfigProperty('basemap', 'lightPreset', style);
                     map.setConfigProperty('basemap', 'theme', theme);
                 } else {
-                    map.setStyle(layer);
+                    map.setStyle(layer, {
+                        config: {
+                            basemap: {
+                                lightPreset: style,
+                                theme: theme
+                            }
+                        }
+                    });
                     if (currentRiskLegend) currentRiskLegend.remove();
                     if (currentWeatherLegend) currentWeatherLegend.remove();
                     currentRiskLegend = null;
@@ -490,31 +497,34 @@
         }
     }
 
-    function toRadians(degrees) { return degrees * Math.PI / 180; }
-    function toDegrees(radians) { return radians * 180 / Math.PI; }
+    function toRad(degrees) { return degrees * Math.PI / 180; }
+    function toDeg(radians) { return radians * 180 / Math.PI; }
 
     function calculateDayNightPolygon() {
-        const now = new Date();
-        const julianDate = now.getTime() / 86400000 + 2440587.5;
-        const numberOfDaysFromJulianDate = julianDate - 2451545;
-        const sunMeanLongitude = (280.466 + 0.9856474 * numberOfDaysFromJulianDate) % 360;
-        const sunMeanAnomaly = (357.528 + 0.9856003 * numberOfDaysFromJulianDate) % 360;
-        const sunEclipticLongitude = (sunMeanLongitude + 1.915 * Math.sin(toRadians(sunMeanAnomaly)) + 0.02 * Math.sin(toRadians(2 * sunMeanAnomaly))) % 360;
-        const sunObliquityOfEcliptic = 23.440 - 0.0000004 * numberOfDaysFromJulianDate;
-        const sunRightAscension = toDegrees(Math.atan2(Math.cos(toRadians(sunObliquityOfEcliptic)) * Math.tan(toRadians(sunEclipticLongitude)), Math.cos(toRadians(sunEclipticLongitude)))) % 360;
-        const sunDeclination = toDegrees(Math.asin(Math.sin(toRadians(sunObliquityOfEcliptic)) * Math.sin(toRadians(sunEclipticLongitude))));
-        const earthSunDistance = 1.00014 - 0.01671 * Math.cos(toRadians(sunMeanAnomaly)) - 0.00014 * Math.cos(toRadians(2 * sunMeanAnomaly));
-        const equationOfTime = (sunMeanLongitude - sunRightAscension) * 4;
-        const subsolarPointY = -15 * (now.getUTCHours() - 12 + equationOfTime / 60);
-        //const Sx = Math.cos(toRadians(sunDeclination)) * Math.sin(toRadians(subsolarPointY - lon));
-        //const Sy = Math.cos(toRadians(lat)) * Math.sin(toRadians(sunDeclination)) - Math.sin(toRadians(lat)) * Math.cos(toRadians(sunDeclination)) * Math.cos(toRadians(subsolarPointY - lon));
-        //const Sz = Math.sin(toRadians(lat)) * Math.sin(toRadians(sunDeclination)) - Math.cos(toRadians(lat)) * Math.cos(toRadians(sunDeclination)) * Math.cos(toRadians(subsolarPointY - lon));
-        //const sunHourAngle = subsolarPointY - lon;
-        //const sunZenithAngle = toDegrees(Math.acos(Sz));
-        //const sunAzimuthAngle = toDegrees(Math.atan2(-Sx, -Sy));
+        const lat = 40.6982;
+        const lon = -7.2953;
 
-        const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-        let gmst = (15 * utcHours + equationOfTime / 4);
+
+
+        const subsolarPointY = -15 * (now.getUTCHours() - 12 + equationOfTimeH / 60);
+        const Sx = Math.cos(toRad(sunDeclinationD)) * Math.sin(toRad(subsolarPointY - lon));
+        const Sy = Math.cos(toRad(lat)) * Math.sin(toRad(sunDeclinationD)) - Math.sin(toRad(lat)) * Math.cos(toRad(sunDeclinationD)) * Math.cos(toRad(subsolarPointY - lon));
+        const Sz = Math.sin(toRad(lat)) * Math.sin(toRad(sunDeclinationD)) - Math.cos(toRad(lat)) * Math.cos(toRad(sunDeclinationD)) * Math.cos(toRad(subsolarPointY - lon));
+        const sunZenithAngle = toDeg(Math.acos(Sz));
+        const sunAzimuthAngle = toDeg(Math.atan2(-Sx, -Sy));
+        let midnight = new Date();
+        midnight.setUTCHours(0, 0, 0, 0);
+        let julianDateMidnight = midnight.getTime() / 86400000 + 2440587.5;
+        let numberOfDaysFromJulianDateMidnight = julianDateMidnight - 2451545;
+        let numberOfCenturiesFrom2000 = numberOfDaysFromJulianDate / 36525;
+        let greenwichMeanSideralTime = (6.697375 + 0.065707485828 * numberOfDaysFromJulianDateMidnight + 1.0027379 * hoursFraction + 0.0854103 * numberOfCenturiesFrom2000 + 0.0000258 * numberOfCenturiesFrom2000 * numberOfCenturiesFrom2000) % 24;
+        let moonAscendingNodeLongitude = (125.04 - 0.052954 * numberOfDaysFromJulianDate) % 360
+        let nutation = -0.000319 * Math.sin(toRad(moonAscendingNodeLongitude)) - 0.000024 * Math.sin(toRad(2 * sunMeanLongitudeD))
+        let equationOfTheEquinoxes = nutation * Math.cos(toRad(sunMeanObliquityOfEclipticD))
+        let greenwichApparentSideralTime = greenwichMeanSideralTime + equationOfTheEquinoxes
+
+        let gmst = (15 * sunRightAscensionH + equationOfTimeH / 4);
+
         let greenwichApparentSolarLongitude = gmst % 360;
         if (greenwichApparentSolarLongitude < 0) greenwichApparentSolarLongitude += 360;
 
@@ -523,12 +533,12 @@
 
         for (let i = 0; i <= nSamples; i++) {
             const latDeg = -90 + (180 / nSamples) * i;
-            const latRad = toRadians(latDeg);
+            const latRad = toRad(latDeg);
 
-            let cosH = -Math.tan(latRad) * Math.tan(toRadians(sunDeclination));
+            let cosH = -Math.tan(latRad) * Math.tan(toRad(sunDeclinationD));
             cosH = Math.max(-1, Math.min(1, cosH));
             const H_rad = Math.acos(cosH);
-            const H_deg = toDegrees(H_rad);
+            const H_deg = toDeg(H_rad);
 
             const normalizeLon = (lon_val) => {
                 let normalized = lon_val % 360;
@@ -543,7 +553,7 @@
 
         for (let i = nSamples; i >= 0; i--) {
             const latDeg = -90 + (180 / nSamples) * i;
-            const latRad = toRadians(latDeg);
+            const latRad = toRad(latDeg);
 
             const normalizeLon = (lon_val) => {
                 let normalized = lon_val % 360;
@@ -552,10 +562,10 @@
                 return normalized;
             };
 
-            let cosH = -Math.tan(latRad) * Math.tan(toRadians(sunDeclination));
+            let cosH = -Math.tan(latRad) * Math.tan(toRad(sunDeclinationD));
             cosH = Math.max(-1, Math.min(1, cosH));
             const H_rad = Math.acos(cosH);
-            const H_deg = toDegrees(H_rad);
+            const H_deg = toDeg(H_rad);
 
             let lonEast_0_360 = (greenwichApparentSolarLongitude + H_deg);
             terminatorPath.push([normalizeLon(lonEast_0_360), latDeg]);
@@ -618,11 +628,10 @@
                         allFireMarkersByStatus[layerConfig.statusCode].forEach(marker => marker.getElement().style.display = 'block');
                     }
                 } else if (layerConfig.category === 'satellite') {
-                    const hotspotSourceId = `${layerKey.toLowerCase().replace(' ', '-')}-data`;
+                    const hotspotSourceId = `${layerKey.toLowerCase().replace(' ', '-')}-hotspots-data`;
                     const areaSourceId = `${layerKey.toLowerCase().replace(' ', '-')}-areas-data`;
-                    const hotspotLayerId = `${layerKey.toLowerCase().replace(' ', '-')}`;
+                    const hotspotLayerId = `${layerKey.toLowerCase().replace(' ', '-')}-hotspots`;
                     const areaLayerId = `${layerKey.toLowerCase().replace(' ', '-')}-areas`;
-
                     if (layerConfig.hotspotData && !map.getSource(hotspotSourceId)) {
                         map.addSource(hotspotSourceId, { type: 'geojson', data: layerConfig.hotspotData });
                         map.addLayer({ id: hotspotLayerId, type: 'circle', source: hotspotSourceId, paint: { 'circle-radius': 5, 'circle-color': '#ff0000', 'circle-stroke-color': '#fff', 'circle-stroke-width': 1, 'circle-opacity': 0.8 }, layout: { 'visibility': 'visible' } });
