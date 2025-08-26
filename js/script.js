@@ -36,12 +36,13 @@
         map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/standard',
-            center: [-7.8536599, 39.557191],
+            projection: 'globe',
             zoom: 6,
-            projection: 'globe'
+            center: [-7.8536599, 39.557191]
         });
 
         map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+
         map.addControl(
             new mapboxgl.GeolocateControl({
                 positionOptions: {
@@ -53,19 +54,17 @@
             'top-left'
         );
 
+        map.on('style.load', () => {
+            map.setTerrain({ 'exaggeration': 1 });
+        });
+
         map.on('load', () => {
             setupCustomLayerControls();
             addWeatherLayers();
             fetchAndApplyDynamicLayers();
             rebuildOverlayControls();
-            updateBaseLayerButtonState('Standard');
+            updateBaseLayerButtonState('Standard - Default - Day');
             updateDayNightLayer();
-        });
-
-        map.on('style.load', () => {
-            if (!map.getStyle().fog) {
-                map.setFog({});
-            }
         });
 
         map.on('click', () => {
@@ -264,15 +263,23 @@
     customLayerControl.appendChild(baseLayerToggle);
 
     const baseLayers = {
-        'Standard': 'mapbox://styles/mapbox/standard',
-        'Streets': 'mapbox://styles/mapbox/streets-v12',
-        'Dark': 'mapbox://styles/mapbox/dark-v11',
-        'Light': 'mapbox://styles/mapbox/light-v11',
-        'Outdoors': 'mapbox://styles/mapbox/outdoors-v12',
-        'Sattelite': 'mapbox://styles/mapbox/satellite-v9',
-        'Satellite Streets': 'mapbox://styles/mapbox/satellite-streets-v12',
-        'Navigation Day': 'mapbox://styles/mapbox/navigation-day-v1',
-        'Navigation Night': 'mapbox://styles/mapbox/navigation-night-v1'
+        'Standard - Default - Dawn': { layer: 'mapbox://styles/mapbox/standard', style: 'dawn', theme: 'default' },
+        'Standard - Default - Day': { layer: 'mapbox://styles/mapbox/standard', style: 'day', theme: 'default' },
+        'Standard - Default - Dusk': { layer: 'mapbox://styles/mapbox/standard', style: 'dusk', theme: 'default' },
+        'Standard - Default - Night': { layer: 'mapbox://styles/mapbox/standard', style: 'night', theme: 'default' },
+        'Standard - Faded - Dawn': { layer: 'mapbox://styles/mapbox/standard', style: 'dawn', theme: 'faded' },
+        'Standard - Faded - Day': { layer: 'mapbox://styles/mapbox/standard', style: 'day', theme: 'faded' },
+        'Standard - Faded - Dusk': { layer: 'mapbox://styles/mapbox/standard', style: 'dusk', theme: 'faded' },
+        'Standard - Faded - Night': { layer: 'mapbox://styles/mapbox/standard', style: 'night', theme: 'faded' },
+        'Standard - Monochrome - Dawn': { layer: 'mapbox://styles/mapbox/standard', style: 'dawn', theme: 'monochrome' },
+        'Standard - Monochrome - Day': { layer: 'mapbox://styles/mapbox/standard', style: 'day', theme: 'monochrome' },
+        'Standard - Monochrome - Dusk': { layer: 'mapbox://styles/mapbox/standard', style: 'dusk', theme: 'monochrome' },
+        'Standard - Monochrome - Night': { layer: 'mapbox://styles/mapbox/standard', style: 'night', theme: 'monochrome' },
+
+        'Satellite - Dawn': { layer: 'mapbox://styles/mapbox/standard-satellite', style: 'dawn' },
+        'Satellite - Day': { layer: 'mapbox://styles/mapbox/standard-satellite', style: 'day' },
+        'Satellite - Dusk': { layer: 'mapbox://styles/mapbox/standard-satellite', style: 'dusk' },
+        'Satellite - Night': { layer: 'mapbox://styles/mapbox/standard-satellite', style: 'night' },
     };
 
     const baseLayerButtons = {};
@@ -289,9 +296,16 @@
 
     for (const layerName in baseLayers) {
         const button = document.createElement('button');
-        button.innerHTML = `<img src="img/map.png"> ${layerName}`;
+        button.innerHTML = `<img src="img/map.png">${layerName}`;
         button.addEventListener('click', () => {
-            map.setStyle(baseLayers[layerName]);
+            map.setStyle(baseLayers[layerName].layer, {
+                config: {
+                    basemap: {
+                        lightPreset: baseLayers[layerName].style,
+                        theme: baseLayers[layerName].theme
+                    }
+                }
+            });
             updateBaseLayerButtonState(layerName);
             if (currentRiskLegend) {
                 currentRiskLegend.remove();
@@ -347,14 +361,6 @@
     weatherControls.appendChild(weatherButtonsContainer);
     customLayerControl.appendChild(weatherControls);
 
-    const threeDControls = document.createElement('div');
-    threeDControls.className = 'layer-category-container';
-    threeDControls.innerHTML = '<div class="layer-category-title">Visualização 3D</div>';
-    const threeDButtonsContainer = document.createElement('div');
-    threeDButtonsContainer.className = 'overlay-buttons-container';
-    threeDControls.appendChild(threeDButtonsContainer);
-    customLayerControl.appendChild(threeDControls);
-
     const dayNightControls = document.createElement('div');
     dayNightControls.className = 'layer-category-container';
     dayNightControls.innerHTML = '<div class="layer-category-title">Ciclo Dia/Noite</div>';
@@ -396,20 +402,6 @@
             category: 'satellite',
             hotspotData: null,
             areaData: null
-        },
-        'Terreno 3D': {
-            id: 'mapbox-dem-terrain-control',
-            type: 'terrain',
-            icon: 'img/map.png',
-            active: false,
-            category: '3d-feature'
-        },
-        'Edifícios 3D': {
-            id: 'add-3d-buildings',
-            type: 'fill-extrusion',
-            icon: 'img/map.png',
-            active: false,
-            category: '3d-feature'
         },
         'Ciclo Dia/Noite': {
             id: 'day-night-layer',
@@ -454,7 +446,6 @@
         satelliteButtonsContainer.innerHTML = '';
         riskButtonsContainer.innerHTML = '';
         weatherButtonsContainer.innerHTML = '';
-        threeDButtonsContainer.innerHTML = '';
         dayNightButtonsContainer.innerHTML = '';
 
         for (const key in overlayButtons) {
@@ -541,45 +532,6 @@
                         currentWeatherLegend.remove();
                         currentWeatherLegend = null;
                     }
-                } else if (layerConfig.category === '3d-feature') {
-                    for (const key in overlayLayers) {
-                        const currentLayer = overlayLayers[key];
-                        if (currentLayer.category === '3d-feature' && currentLayer.id !== clickedLayerId) {
-                            currentLayer.active = false;
-                            if (overlayButtons[key]) {
-                                overlayButtons[key].classList.remove('active');
-                            }
-                            if (currentLayer.id === 'mapbox-dem-terrain-control') {
-                                map.setTerrain(null);
-                            } else if (map.getLayer(currentLayer.id)) {
-                                map.setLayoutProperty(currentLayer.id, 'visibility', 'none');
-                            }
-                        }
-                    }
-
-                    layerConfig.active = newActiveState;
-                    button.classList.toggle('active', newActiveState);
-
-                    if (newActiveState) {
-                        if (clickedLayerId === 'mapbox-dem-terrain-control') {
-                            if (map.getSource('mapbox-dem')) {
-                                map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1 });
-                            }
-                        } else if (clickedLayerId === 'add-3d-buildings') {
-                            map.setTerrain(null);
-                            if (map.getLayer('add-3d-buildings')) {
-                                map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible');
-                            }
-                        }
-                    } else {
-                        if (clickedLayerId === 'mapbox-dem-terrain-control') {
-                            map.setTerrain(null);
-                        } else if (clickedLayerId === 'add-3d-buildings') {
-                            if (map.getLayer('add-3d-buildings')) {
-                                map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
-                            }
-                        }
-                    }
                 } else if (clickedCategory === 'day-night') {
                     if (newActiveState) {
                         updateDayNightLayer();
@@ -602,8 +554,6 @@
                 riskButtonsContainer.appendChild(button);
             } else if (layerConfig.category === 'weather') {
                 weatherButtonsContainer.appendChild(button);
-            } else if (layerConfig.category === '3d-feature') {
-                threeDButtonsContainer.appendChild(button);
             } else if (layerConfig.category === 'day-night') {
                 dayNightButtonsContainer.appendChild(button);
             }
@@ -735,7 +685,7 @@
         if (validCoords.length > 0 && (validCoords[0][0] !== validCoords[validCoords.length - 1][0] || validCoords[0][1] !== validCoords[validCoords.length - 1][1])) {
             validCoords.push(validCoords[0]);
         }
-        
+
         polygonCoordinates = [validCoords];
 
         return {
@@ -900,36 +850,6 @@
                         const legendInfo = weatherLegendsData[layerConfig.legend];
                         generateWeatherLegend(legendInfo.name, legendInfo.stops, legendInfo.unit);
                     }
-                } else if (layerConfig.category === '3d-feature') {
-                    setTimeout(() => {
-                        if (layerConfig.id === 'mapbox-dem-terrain-control') {
-                            if (layerConfig.active) {
-                                if (map.getSource('mapbox-dem')) {
-                                    map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1 });
-                                } else {
-                                    console.warn('mapbox-dem source not found when trying to activate 3D terrain.');
-                                }
-                                if (map.getLayer('add-3d-buildings')) {
-                                    map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
-                                }
-                            } else {
-                                map.setTerrain(null);
-                            }
-                        } else if (layerConfig.id === 'add-3d-buildings') {
-                            if (layerConfig.active) {
-                                if (map.getLayer('add-3d-buildings')) {
-                                    map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible');
-                                } else {
-                                    console.warn('add-3d-buildings layer not found when trying to activate 3D buildings.');
-                                }
-                                map.setTerrain(null);
-                            } else {
-                                if (map.getLayer('add-3d-buildings')) {
-                                    map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
-                                }
-                            }
-                        }
-                    }, 100);
                 } else if (layerConfig.category === 'day-night') {
                     if (layerConfig.active) {
                         updateDayNightLayer();
@@ -945,16 +865,6 @@
                     });
                 }
 
-            } else if (layerConfig.category === '3d-feature') {
-                setTimeout(() => {
-                    if (layerConfig.id === 'mapbox-dem-terrain-control') {
-                        map.setTerrain(null);
-                    } else if (layerConfig.id === 'add-3d-buildings') {
-                        if (map.getLayer('add-3d-buildings')) {
-                            map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
-                        }
-                    }
-                }, 100);
             } else if (layerConfig.category === 'day-night') {
                 if (map.getLayer('day-night-layer')) {
                     map.setLayoutProperty('day-night-layer', 'visibility', 'none');
@@ -1270,13 +1180,12 @@
     async function danger(id) {
         try {
             const response = await fetch(`https://fogos.pt/views/risk/${id}`);
-            const data = await response.json(); // Assumindo que retorna JSON agora
+            const data = await response.text();
             const fDanger = document.querySelector('.f-danger');
             const dangerRow = document.querySelector('.row.danger');
 
-            if (data && data.active) { // Verificar se 'active' é uma propriedade no JSON
-                // Assumindo que o JSON pode conter HTML ou dados para construir o HTML
-                fDanger.innerHTML = data.content || ''; // Exemplo: se o JSON tiver uma propriedade 'content'
+            if (data && data.trim().length > 2) {
+                fDanger.innerHTML = data;
                 dangerRow.classList.add('active');
             } else {
                 fDanger.innerHTML = '';
