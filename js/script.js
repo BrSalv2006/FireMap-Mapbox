@@ -35,7 +35,7 @@
     function initializeMap() {
         map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v12',
+            style: 'mapbox://styles/mapbox/standard',
             center: [-7.8536599, 39.557191],
             zoom: 6,
             projection: 'globe'
@@ -58,65 +58,13 @@
             addWeatherLayers();
             fetchAndApplyDynamicLayers();
             rebuildOverlayControls();
-            updateBaseLayerButtonState('Streets');
+            updateBaseLayerButtonState('Standard');
             updateDayNightLayer();
         });
 
         map.on('style.load', () => {
             if (!map.getStyle().fog) {
                 map.setFog({});
-            }
-
-            map.addSource('mapbox-dem', {
-                'type': 'raster-dem',
-                'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                'tileSize': 512,
-                'maxzoom': 14
-            });
-            map.setTerrain(null);
-
-            const layers = map.getStyle().layers;
-            const labelLayerId = layers.find(
-                (layer) => layer.type === 'symbol' && layer.layout['text-field']
-            ).id;
-
-            map.addLayer(
-                {
-                    'id': 'add-3d-buildings',
-                    'source': 'composite',
-                    'source-layer': 'building',
-                    'filter': ['==', 'extrude', 'true'],
-                    'type': 'fill-extrusion',
-                    'minzoom': 15,
-                    'paint': {
-                        'fill-extrusion-color': '#aaa',
-
-                        'fill-extrusion-height': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            15,
-                            0,
-                            15.05,
-                            ['get', 'height']
-                        ],
-                        'fill-extrusion-base': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            15,
-                            0,
-                            15.05,
-                            ['get', 'min_height']
-                        ],
-                        'fill-extrusion-opacity': 0.6
-                    }
-                },
-                labelLayerId
-            );
-
-            if (map.getLayer('add-3d-buildings')) {
-                map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
             }
         });
 
@@ -316,6 +264,7 @@
     customLayerControl.appendChild(baseLayerToggle);
 
     const baseLayers = {
+        'Standard': 'mapbox://styles/mapbox/standard',
         'Streets': 'mapbox://styles/mapbox/streets-v12',
         'Dark': 'mapbox://styles/mapbox/dark-v11',
         'Light': 'mapbox://styles/mapbox/light-v11',
@@ -663,7 +612,7 @@
         }
     }
 
-    // Helper functions for conversions
+    // Funções auxiliares para conversões
     function toRadians(degrees) {
         return degrees * Math.PI / 180;
     }
@@ -675,6 +624,7 @@
     function calculateDayNightPolygon() {
         let now = new Date();
 
+        // Fórmulas Astronômicas
         let julianDate = now.getTime() / 86400000 + 2440587.5;
         let numberOfDaysFromJulianDate = julianDate - 2451545;
         let sunMeanLongitude = (280.466 + 0.9856474 * numberOfDaysFromJulianDate) % 360;
@@ -695,121 +645,104 @@
 
         // Corrected calculation for Greenwich Apparent Solar Longitude
         let utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-        let greenwichApparentSolarLongitude = (15 * utcHours + equationOfTime / 60 * 15 - 180) % 360; // Longitude of the apparent sun at Greenwich
-        if (greenwichApparentSolarLongitude > 180) greenwichApparentSolarLongitude -= 360;
-        if (greenwichApparentSolarLongitude < -180) greenwichApparentSolarLongitude += 360;
+        let gmst = (15 * utcHours + equationOfTime / 60 * 15); // Tempo Sideral Médio de Greenwich em graus
+        let greenwichApparentSolarLongitude = gmst % 360;
+        if (greenwichApparentSolarLongitude < 0) greenwichApparentSolarLongitude += 360;
 
 
         const terminatorPath = [];
-        const nSamples = 180; // Number of samples for the terminator line
+        const nSamples = 180; // Número de amostras para a linha do terminador
 
-        // Calculate the two "limbs" of the terminator
-        const westernLimb = [];
-        const easternLimb = [];
-
+        // Calcula os pontos do terminador para o lado ocidental (S->N) e oriental (N->S)
         for (let i = 0; i <= nSamples; i++) {
             const latDeg = -90 + (180 / nSamples) * i;
             const latRad = toRadians(latDeg);
 
-            // Calculate cosH for the local hour angle where sun is at 0 altitude
             let cosH;
-            if (Math.abs(Math.cos(latRad)) < 1e-6) { // At poles (cos(lat) ~ 0)
-                cosH = 0;
-            } else if (Math.abs(toRadians(sunDeclination)) < 1e-6) { // Near equinox (declination ~ 0)
-                cosH = 0;
+            if (Math.abs(Math.cos(latRad)) < 1e-6 || Math.abs(toRadians(sunDeclination)) < 1e-6) {
+                cosH = 0; // Para lidar com polos ou equinócios extremos
             } else {
                 cosH = -Math.tan(latRad) * Math.tan(toRadians(sunDeclination));
             }
 
-            // Clamp cosH to valid range [-1, 1] to avoid Math.acos errors
+            // Limitar cosH ao intervalo [-1, 1] para evitar erros em Math.acos
             cosH = Math.max(-1, Math.min(1, cosH));
-            const H_rad = Math.acos(cosH); // Local Hour Angle in radians
-
+            const H_rad = Math.acos(cosH); // Ângulo Horário Local em radianos
             const H_deg = toDegrees(H_rad);
 
-            // Longitude of the terminator
-            // Western limb (sunset side if sun is moving west)
-            let lonWest = (greenwichApparentSolarLongitude - H_deg);
-            // Eastern limb (sunrise side if sun is moving west)
-            let lonEast = (greenwichApparentSolarLongitude + H_deg);
+            // Longitude do terminador no lado ocidental (nascer/pôr do sol)
+            let lonWest_0_360 = (greenwichApparentSolarLongitude - H_deg);
+            // Longitude do terminador no lado oriental
+            let lonEast_0_360 = (greenwichApparentSolarLongitude + H_deg);
 
-            // Normalize longitudes to -180 to 180
-            const normalizeLon = (lon) => {
-                let normalized = lon % 360;
+            // Normaliza as longitudes para o intervalo [-180, 180] para o Mapbox
+            const normalizeLon = (lon_val) => {
+                let normalized = lon_val % 360;
                 if (normalized > 180) normalized -= 360;
                 if (normalized < -180) normalized += 360;
                 return normalized;
             };
 
-            westernLimb.push([normalizeLon(lonWest), latDeg]);
-            easternLimb.push([normalizeLon(lonEast), latDeg]);
+            // Adiciona o ponto do lado ocidental (S -> N)
+            terminatorPath.push([normalizeLon(lonWest_0_360), latDeg]);
         }
 
-        // To form a continuous polygon, we connect the western limb from S to N,
-        // then connect to the eastern limb from N to S.
-        for (let i = 0; i < westernLimb.length; i++) {
-            terminatorPath.push(westernLimb[i]);
-        }
-        for (let i = easternLimb.length - 1; i >= 0; i--) {
-            terminatorPath.push(easternLimb[i]);
-        }
+        // Adiciona os pontos do lado oriental, de N para S, para fechar o loop corretamente
+        for (let i = nSamples; i >= 0; i--) {
+            const latDeg = -90 + (180 / nSamples) * i;
+            const latRad = toRadians(latDeg);
 
+            const normalizeLon = (lon_val) => {
+                let normalized = lon_val % 360;
+                if (normalized > 180) normalized -= 360;
+                if (normalized < -180) normalized += 360;
+                return normalized;
+            };
 
-        let polygonCoordinates = [];
-
-        // Determine if there's global day or night based on sun's altitude at poles
-        // Using `sunDeclination` to approximate polar conditions
-        const poleThreshold = 66.5; // Latitude of Arctic/Antarctic circles
-        if (Math.abs(sunDeclination) >= (90 - poleThreshold)) { // If declination is beyond the poleThreshold
-            // Potentially global day or night at one pole
-            const nowUTC = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-            const apparentSunLongitudeAtGreenwich = (sunMeanLongitude + equationOfTime / 60 * 15) % 360; // Simplified
-            const subSolarPointLat = sunDeclination;
-
-            if (subSolarPointLat > 0 && subSolarPointLat > (90 - poleThreshold)) { // North pole in full sun
-                if (terminatorPath.length > 0) {
-                    // Night in Southern Hemisphere, needs to be capped by South Pole and terminator
-                    polygonCoordinates = [
-                        [[-180, -90], [180, -90], ...terminatorPath, [-180, -90]]
-                    ];
-                }
-            } else if (subSolarPointLat < 0 && Math.abs(subSolarPointLat) > (90 - poleThreshold)) { // South pole in full sun
-                if (terminatorPath.length > 0) {
-                    // Night in Northern Hemisphere, needs to be capped by North Pole and terminator
-                    polygonCoordinates = [
-                        [[-180, 90], [180, 90], ...terminatorPath.slice().reverse(), [-180, 90]] // Reverse to go CW
-                    ];
-                }
-            } else { // Standard day/night cycle
-                polygonCoordinates = [terminatorPath];
+            let cosH;
+            if (Math.abs(Math.cos(latRad)) < 1e-6 || Math.abs(toRadians(sunDeclination)) < 1e-6) {
+                cosH = 0;
+            } else {
+                cosH = -Math.tan(latRad) * Math.tan(toRadians(sunDeclination));
             }
+            cosH = Math.max(-1, Math.min(1, cosH));
+            const H_rad = Math.acos(cosH);
+            const H_deg = toDegrees(H_rad);
 
-        } else {
-            // Standard day/night cycle, neither pole has 24h day/night
-            polygonCoordinates = [terminatorPath];
+            let lonEast_0_360 = (greenwichApparentSolarLongitude + H_deg);
+
+            // Adiciona o ponto do lado oriental (N -> S)
+            terminatorPath.push([normalizeLon(lonEast_0_360), latDeg]);
         }
 
-        // Filter out NaN coordinates and ensure the polygon is closed
+        // Garante que o caminho do terminador está explicitamente fechado (primeiro == último ponto)
+        if (terminatorPath.length > 0 && (terminatorPath[0][0] !== terminatorPath[terminatorPath.length - 1][0] || terminatorPath[0][1] !== terminatorPath[terminatorPath.length - 1][1])) {
+            terminatorPath.push(terminatorPath[0]);
+        }
+
+        let polygonCoordinates = [terminatorPath]; // A área da noite é definida diretamente pelo caminho do terminador
+
+        // Filtrar coordenadas NaN e garantir que o polígono está fechado (verificação redundante, mas segura)
         const validCoords = polygonCoordinates.length > 0 ? polygonCoordinates[0].filter(c => !isNaN(c[0]) && !isNaN(c[1])) : [];
 
         if (validCoords.length < 3) {
-            // If the filtered coords are not enough for a polygon, return empty.
             return {
                 type: "FeatureCollection",
                 features: []
             };
         }
 
-        // Ensure the polygon is closed (first and last coordinate pairs are identical)
         if (validCoords.length > 0 && (validCoords[0][0] !== validCoords[validCoords.length - 1][0] || validCoords[0][1] !== validCoords[validCoords.length - 1][1])) {
             validCoords.push(validCoords[0]);
         }
+        
+        polygonCoordinates = [validCoords];
 
         return {
             type: "Feature",
             geometry: {
                 type: "Polygon",
-                coordinates: [validCoords]
+                coordinates: polygonCoordinates
             },
             properties: {}
         };
@@ -1337,11 +1270,13 @@
     async function danger(id) {
         try {
             const response = await fetch(`https://fogos.pt/views/risk/${id}`);
-            const data = await response.text();
+            const data = await response.json(); // Assumindo que retorna JSON agora
             const fDanger = document.querySelector('.f-danger');
             const dangerRow = document.querySelector('.row.danger');
-            if (data && data.includes("active")) {
-                fDanger.innerHTML = data;
+
+            if (data && data.active) { // Verificar se 'active' é uma propriedade no JSON
+                // Assumindo que o JSON pode conter HTML ou dados para construir o HTML
+                fDanger.innerHTML = data.content || ''; // Exemplo: se o JSON tiver uma propriedade 'content'
                 dangerRow.classList.add('active');
             } else {
                 fDanger.innerHTML = '';
@@ -1349,6 +1284,10 @@
             }
         } catch (error) {
             console.error('Erro ao obter informações de risco:', error);
+            const fDanger = document.querySelector('.f-danger');
+            const dangerRow = document.querySelector('.row.danger');
+            fDanger.innerHTML = '';
+            dangerRow.classList.remove('active');
         }
     }
 
