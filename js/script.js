@@ -275,7 +275,6 @@
         'Standard - Monochrome - Day': { layer: 'mapbox://styles/mapbox/standard', style: 'day', theme: 'monochrome' },
         'Standard - Monochrome - Dusk': { layer: 'mapbox://styles/mapbox/standard', style: 'dusk', theme: 'monochrome' },
         'Standard - Monochrome - Night': { layer: 'mapbox://styles/mapbox/standard', style: 'night', theme: 'monochrome' },
-
         'Satellite - Dawn': { layer: 'mapbox://styles/mapbox/standard-satellite', style: 'dawn' },
         'Satellite - Day': { layer: 'mapbox://styles/mapbox/standard-satellite', style: 'day' },
         'Satellite - Dusk': { layer: 'mapbox://styles/mapbox/standard-satellite', style: 'dusk' },
@@ -298,32 +297,38 @@
         const button = document.createElement('button');
         button.innerHTML = `<img src="img/map.png">${layerName}`;
         button.addEventListener('click', () => {
-            map.setStyle(baseLayers[layerName].layer, {
-                config: {
-                    basemap: {
-                        lightPreset: baseLayers[layerName].style,
-                        theme: baseLayers[layerName].theme
+            const { layer, style, theme } = baseLayers[layerName];
+            const previousActiveLayer = document.querySelector('.active').textContent.split('-')[0].trim();
+            const newActiveLayer = layerName.split('-')[0].trim();
+            const isStandardStyle = layer.includes('mapbox/standard');
+
+            if (isStandardStyle && (previousActiveLayer === newActiveLayer)) {
+                map.setConfigProperty('basemap', 'lightPreset', style);
+                map.setConfigProperty('basemap', 'theme', theme);
+            } else {
+                map.setStyle(layer);
+
+                if (currentRiskLegend) {
+                    currentRiskLegend.remove();
+                    currentRiskLegend = null;
+                }
+                if (currentWeatherLegend) {
+                    currentWeatherLegend.remove();
+                    currentWeatherLegend = null;
+                }
+                map.once('styledata', () => {
+                    addWeatherLayers();
+                    fetchAndApplyDynamicLayers();
+                    reapplyOverlayLayers();
+                    rebuildOverlayControls();
+                    if (overlayLayers['Ciclo Dia/Noite'].active) {
+                        updateDayNightLayer();
                     }
-                }
-            });
+                });
+            }
+
             updateBaseLayerButtonState(layerName);
-            if (currentRiskLegend) {
-                currentRiskLegend.remove();
-                currentRiskLegend = null;
-            }
-            if (currentWeatherLegend) {
-                currentWeatherLegend.remove();
-                currentWeatherLegend = null;
-            }
-            map.once('styledata', () => {
-                addWeatherLayers();
-                fetchAndApplyDynamicLayers();
-                reapplyOverlayLayers();
-                rebuildOverlayControls();
-                if (overlayLayers['Ciclo Dia/Noite'].active) {
-                    updateDayNightLayer();
-                }
-            });
+
         }, { passive: true });
         baseLayerButtonsContainer.appendChild(button);
         baseLayerButtons[layerName] = button;
