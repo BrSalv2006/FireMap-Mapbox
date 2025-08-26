@@ -663,119 +663,129 @@
         }
     }
 
+    // Helper functions for conversions
+    function toRadians(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    function toDegrees(radians) {
+        return radians * 180 / Math.PI;
+    }
+
     function calculateDayNightPolygon() {
-        if (typeof SunCalc === 'undefined') {
-            console.error('SunCalc library not loaded.');
-            return {
-                type: "FeatureCollection",
-                features: []
-            };
-        }
-
-        function toRadians(angle) {
-            return angle * (Math.PI / 180);
-        }
-
-        function toDegrees(angle) {
-            return angle * (180 / Math.PI);
-        }
-
         let now = new Date();
 
-        let sun = (date) => {
-            let julianDate = date.getTime() / 86400000 + 2440587.5;
-            let numberOfDaysFromJulianDate = julianDate - 2451545;
-            let sunMeanLongitude = (280.466 + 0.9856474 * numberOfDaysFromJulianDate) % 360;
-            let sunMeanAnomaly = (357.528 + 0.9856003 * numberOfDaysFromJulianDate) % 360;
-            let sunEclipticLongitude = (sunMeanLongitude + 1.915 * Math.sin(toRadians(sunMeanAnomaly)) + 0.02 * Math.sin(toRadians(2 * sunMeanAnomaly))) % 360;
-            let sunObliquityOfEcliptic = 23.440 - 0.0000004 * numberOfDaysFromJulianDate;
-            let sunRightAscension = toDegrees(Math.atan2(Math.cos(toRadians(sunObliquityOfEcliptic)) * Math.tan(toRadians(sunEclipticLongitude)), Math.cos(toRadians(sunEclipticLongitude)))) % 360;
-            let sunDeclination = toDegrees(Math.asin(Math.sin(toRadians(sunObliquityOfEcliptic)) * Math.sin(toRadians(sunEclipticLongitude))));
-            let earthSunDistance = 1.00014 - 0.01671 * Math.cos(toRadians(sunMeanAnomaly)) - 0.00014 * Math.cos(toRadians(2 * sunMeanAnomaly));
-            let equationOfTime = (sunMeanLongitude - sunRightAscension) * 4;
-            let subsolarPointY = -15(date.getUTCHours() - 12 + equationOfTime / 60);
-            let Sx = Math.cos(toRadians(sunDeclination)) * Math.sin(toRadians(subsolarPointY - lon));
-            let Sy = Math.cos(toRadians(lat)) * Math.sin(toRadians(sunDeclination)) - Math.sin(toRadians(lat)) * Math.cos(toRadians(sunDeclination)) * Math.cos(toRadians(subsolarPointY - lon));
-            let Sz = Math.sin(toRadians(lat)) * Math.sin(toRadians(sunDeclination)) - Math.cos(toRadians(lat)) * Math.cos(toRadians(sunDeclination)) * Math.cos(toRadians(subsolarPointY - lon));
-            let sunHourAngle = subsolarPointY - lon;
-            let sunZenithAngle = toDegrees(Math.acos(Sz));
-            let sunAzimuthAngle = toDegrees(Math.atan2(-Sx, -Sy));
-        };
+        let julianDate = now.getTime() / 86400000 + 2440587.5;
+        let numberOfDaysFromJulianDate = julianDate - 2451545;
+        let sunMeanLongitude = (280.466 + 0.9856474 * numberOfDaysFromJulianDate) % 360;
+        let sunMeanAnomaly = (357.528 + 0.9856003 * numberOfDaysFromJulianDate) % 360;
+        let sunEclipticLongitude = (sunMeanLongitude + 1.915 * Math.sin(toRadians(sunMeanAnomaly)) + 0.02 * Math.sin(toRadians(2 * sunMeanAnomaly))) % 360;
+        let sunObliquityOfEcliptic = 23.440 - 0.0000004 * numberOfDaysFromJulianDate;
+        let sunRightAscension = toDegrees(Math.atan2(Math.cos(toRadians(sunObliquityOfEcliptic)) * Math.tan(toRadians(sunEclipticLongitude)), Math.cos(toRadians(sunEclipticLongitude)))) % 360;
+        let sunDeclination = toDegrees(Math.asin(Math.sin(toRadians(sunObliquityOfEcliptic)) * Math.sin(toRadians(sunEclipticLongitude))));
+        let earthSunDistance = 1.00014 - 0.01671 * Math.cos(toRadians(sunMeanAnomaly)) - 0.00014 * Math.cos(toRadians(2 * sunMeanAnomaly));
+        let equationOfTime = (sunMeanLongitude - sunRightAscension) * 4;
+        let subsolarPointY = -15 * (now.getUTCHours() - 12 + equationOfTime / 60);
+        //let Sx = Math.cos(toRadians(sunDeclination)) * Math.sin(toRadians(subsolarPointY - lon));
+        //let Sy = Math.cos(toRadians(lat)) * Math.sin(toRadians(sunDeclination)) - Math.sin(toRadians(lat)) * Math.cos(toRadians(sunDeclination)) * Math.cos(toRadians(subsolarPointY - lon));
+        //let Sz = Math.sin(toRadians(lat)) * Math.sin(toRadians(sunDeclination)) - Math.cos(toRadians(lat)) * Math.cos(toRadians(sunDeclination)) * Math.cos(toRadians(subsolarPointY - lon));
+        //let sunHourAngle = subsolarPointY - lon;
+        //let sunZenithAngle = toDegrees(Math.acos(Sz));
+        //let sunAzimuthAngle = toDegrees(Math.atan2(-Sx, -Sy));
 
-        console.log(sun)
+        // Corrected calculation for Greenwich Apparent Solar Longitude
+        let utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+        let greenwichApparentSolarLongitude = (15 * utcHours + equationOfTime / 60 * 15 - 180) % 360; // Longitude of the apparent sun at Greenwich
+        if (greenwichApparentSolarLongitude > 180) greenwichApparentSolarLongitude -= 360;
+        if (greenwichApparentSolarLongitude < -180) greenwichApparentSolarLongitude += 360;
 
-        // Helper to get sun altitude at a given latitude (using the custom formulas)
-        let getSunAltitude = (lat) => {
-            const radiansLat = degreesToRadians(lat);
-            const radiansSunHourAngle = degreesToRadians(sunHourAngle);
-            let sunAltitude = Math.asin(Math.sin(radiansLat) * Math.sin(sunDeclination) + Math.cos(radiansLat) * Math.cos(sunDeclination) * Math.cos(radiansSunHourAngle));
-            return sunAltitude;
-        };
 
         const terminatorPath = [];
         const nSamples = 180; // Number of samples for the terminator line
 
-        // Part 1: Western limb of the night side (from South Pole to North Pole)
+        // Calculate the two "limbs" of the terminator
+        const westernLimb = [];
+        const easternLimb = [];
+
         for (let i = 0; i <= nSamples; i++) {
             const latDeg = -90 + (180 / nSamples) * i;
-            const latRad = degreesToRadians(latDeg);
+            const latRad = toRadians(latDeg);
 
+            // Calculate cosH for the local hour angle where sun is at 0 altitude
             let cosH;
             if (Math.abs(Math.cos(latRad)) < 1e-6) { // At poles (cos(lat) ~ 0)
                 cosH = 0;
-            } else if (Math.abs(sunDeclination) < 1e-6) { // Near equinox (declination ~ 0)
+            } else if (Math.abs(toRadians(sunDeclination)) < 1e-6) { // Near equinox (declination ~ 0)
                 cosH = 0;
             } else {
-                cosH = -Math.tan(latRad) * Math.tan(sunDeclination);
+                cosH = -Math.tan(latRad) * Math.tan(toRadians(sunDeclination));
             }
 
+            // Clamp cosH to valid range [-1, 1] to avoid Math.acos errors
             cosH = Math.max(-1, Math.min(1, cosH));
-            const H_rad = Math.acos(cosH);
-            const H_deg = radiansToDegrees(H_rad);
+            const H_rad = Math.acos(cosH); // Local Hour Angle in radians
 
-            const lon = ((sunHourAngle - H_deg + 540) % 360) - 180; // Western side longitude, normalized
-            terminatorPath.push([lon, latDeg]);
+            const H_deg = toDegrees(H_rad);
+
+            // Longitude of the terminator
+            // Western limb (sunset side if sun is moving west)
+            let lonWest = (greenwichApparentSolarLongitude - H_deg);
+            // Eastern limb (sunrise side if sun is moving west)
+            let lonEast = (greenwichApparentSolarLongitude + H_deg);
+
+            // Normalize longitudes to -180 to 180
+            const normalizeLon = (lon) => {
+                let normalized = lon % 360;
+                if (normalized > 180) normalized -= 360;
+                if (normalized < -180) normalized += 360;
+                return normalized;
+            };
+
+            westernLimb.push([normalizeLon(lonWest), latDeg]);
+            easternLimb.push([normalizeLon(lonEast), latDeg]);
         }
 
-        // Part 2: Eastern limb of the night side (from North Pole to South Pole, reversed latitude order)
-        for (let i = nSamples; i >= 0; i--) {
-            const latDeg = -90 + (180 / nSamples) * i;
-            const latRad = degreesToRadians(latDeg);
-
-            let cosH;
-            if (Math.abs(Math.cos(latRad)) < 1e-6) {
-                cosH = 0;
-            } else if (Math.abs(sunDeclination) < 1e-6) {
-                cosH = 0;
-            } else {
-                cosH = -Math.tan(latRad) * Math.tan(sunDeclination);
-            }
-
-            cosH = Math.max(-1, Math.min(1, cosH));
-            const H_rad = Math.acos(cosH);
-            const H_deg = radiansToDegrees(H_rad);
-
-            const lon = ((sunHourAngle + H_deg + 540) % 360) - 180; // Eastern side longitude, normalized
-            terminatorPath.push([lon, latDeg]);
+        // To form a continuous polygon, we connect the western limb from S to N,
+        // then connect to the eastern limb from N to S.
+        for (let i = 0; i < westernLimb.length; i++) {
+            terminatorPath.push(westernLimb[i]);
         }
+        for (let i = easternLimb.length - 1; i >= 0; i--) {
+            terminatorPath.push(easternLimb[i]);
+        }
+
 
         let polygonCoordinates = [];
 
-        // Determine global day or night based on sun's altitude at poles using SunCalc for consistency
-        const sunAltitudeAtNorthPole = SunCalc.getPosition(now, 90, 0).altitude;
-        const sunAltitudeAtSouthPole = SunCalc.getPosition(now, -90, 0).altitude;
+        // Determine if there's global day or night based on sun's altitude at poles
+        // Using `sunDeclination` to approximate polar conditions
+        const poleThreshold = 66.5; // Latitude of Arctic/Antarctic circles
+        if (Math.abs(sunDeclination) >= (90 - poleThreshold)) { // If declination is beyond the poleThreshold
+            // Potentially global day or night at one pole
+            const nowUTC = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+            const apparentSunLongitudeAtGreenwich = (sunMeanLongitude + equationOfTime / 60 * 15) % 360; // Simplified
+            const subSolarPointLat = sunDeclination;
 
-        // Using a threshold a few degrees below the horizon for "night"
-        const horizonThreshold = degreesToRadians(-6); // Civil twilight is at -6 degrees
+            if (subSolarPointLat > 0 && subSolarPointLat > (90 - poleThreshold)) { // North pole in full sun
+                if (terminatorPath.length > 0) {
+                    // Night in Southern Hemisphere, needs to be capped by South Pole and terminator
+                    polygonCoordinates = [
+                        [[-180, -90], [180, -90], ...terminatorPath, [-180, -90]]
+                    ];
+                }
+            } else if (subSolarPointLat < 0 && Math.abs(subSolarPointLat) > (90 - poleThreshold)) { // South pole in full sun
+                if (terminatorPath.length > 0) {
+                    // Night in Northern Hemisphere, needs to be capped by North Pole and terminator
+                    polygonCoordinates = [
+                        [[-180, 90], [180, 90], ...terminatorPath.slice().reverse(), [-180, 90]] // Reverse to go CW
+                    ];
+                }
+            } else { // Standard day/night cycle
+                polygonCoordinates = [terminatorPath];
+            }
 
-        if (sunAltitudeAtNorthPole < horizonThreshold && sunAltitudeAtSouthPole < horizonThreshold) {
-            // Global night: sun is below civil twilight for both poles
-            polygonCoordinates = [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]];
-        } else if (sunAltitudeAtNorthPole > horizonThreshold && sunAltitudeAtSouthPole > horizonThreshold) {
-            // Global day: sun is above civil twilight for both poles
-            polygonCoordinates = []; // No night polygon to draw
         } else {
-            // Standard day/night cycle: use the continuously traced terminator path
+            // Standard day/night cycle, neither pole has 24h day/night
             polygonCoordinates = [terminatorPath];
         }
 
