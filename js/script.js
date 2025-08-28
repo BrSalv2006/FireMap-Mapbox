@@ -497,128 +497,61 @@
         }
     }
 
-    function toRad(degrees) { return degrees * Math.PI / 180; }
-    function toDeg(radians) { return radians * 180 / Math.PI; }
-
     function calculateDayNightPolygon() {
-        let lat = 39.557191;
-        let lon = -7.8536599;
-        let date = new Date();
+        const date = new Date();
+        const sunCalc = new SPA();
 
-        let sun = (date, lat, lon) => {
-            let J2000 = new Date(Date.UTC(2000, 0, 1, 12, 0, 0));
-            let julianDate = 2451545.0 + (date.getTime() - J2000.getTime()) / 86400000;
-            let numberOfCenturiesFromJ200 = (julianDate - 2451545.0) / 36525;
-            let meanLongitude = (280.46646 + 36000.76983 * numberOfCenturiesFromJ200 + 0.0003032 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200) % 360;
-            let meanAnomaly = (357.52911 + 35999.05029 * numberOfCenturiesFromJ200 - 0.0001537 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200) % 360;
-            let equationOfCenter = 1.914602 * Math.sin(toRad(meanAnomaly)) + 0.019993 * Math.sin(toRad(2 * meanAnomaly)) + 0.000289 * Math.sin(toRad(3 * meanAnomaly));
-            let eclipticLongitude = meanLongitude + equationOfCenter;
-            let obliquityOfTheEcliptic = 23.439291 - 0.013004 * numberOfCenturiesFromJ200 - 0.00000016 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 + 0.000000504 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200;
-            let rightAscension = toDeg(Math.atan2(Math.cos(toRad(obliquityOfTheEcliptic)) * Math.sin(toRad(eclipticLongitude)), Math.cos(toRad(eclipticLongitude))));
-            let declination = toDeg(Math.asin(Math.sin(toRad(obliquityOfTheEcliptic)) * Math.sin(toRad(eclipticLongitude))));
-            let universalTime = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-            let greenwichMeanSiderealTime = (280.46061837 + 360.98564736629 * (julianDate - 2451545.0) + 0.000387933 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 - numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 / 38710000) % 360;
-            let localHourAngle = (greenwichMeanSiderealTime + lon - rightAscension) % 360;
-            let sinAltitude = Math.sin(toRad(lat)) * Math.sin(toRad(declination)) + Math.cos(toRad(lat)) * Math.cos(toRad(declination)) * Math.cos(toRad(localHourAngle));
-            let altitude = toDeg(Math.asin(sinAltitude));
-            let cosAzimuthNumerator = Math.sin(toRad(declination)) - Math.sin(toRad(lat)) * Math.sin(toRad(altitude));
-            let cosAzimuthDenominator = Math.cos(toRad(lat)) * Math.cos(toRad(altitude));
-            let cosAzimuth = cosAzimuthNumerator / cosAzimuthDenominator;
-            let azimuth = toDeg(Math.acos(cosAzimuth));
-            if (Math.sin(toRad(localHourAngle)) > 0) {
-                azimuth = 360 - azimuth;
-            }
+        sunCalc.data.year = date.getUTCFullYear();
+        sunCalc.data.month = date.getUTCMonth() + 1;
+        sunCalc.data.day = date.getUTCDate();
+        sunCalc.data.hour = date.getUTCHours();
+        sunCalc.data.minute = date.getUTCMinutes();
+        sunCalc.data.second = date.getUTCSeconds();
+        sunCalc.data.timezone = 0;
+        sunCalc.data.longitude = 0;
+        sunCalc.data.latitude = 0;
 
-            return { declination: declination, meanAnomaly: meanAnomaly, altitude: altitude, azimuth: azimuth };
-        };
+        sunCalc.calculate();
 
-        let moon = (date, lat, lon) => {
-            let J2000 = new Date(Date.UTC(2000, 0, 1, 12, 0, 0));
-            let julianDate = 2451545.0 + (date.getTime() - J2000.getTime()) / 86400000;
-            let numberOfCenturiesFromJ200 = (julianDate - 2451545.0) / 36525;
-            let meanLongitude = (218.3164477 + 481267.88123421 * numberOfCenturiesFromJ200 - 0.0015786 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 + 0.00000533 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200) % 360;
-            let meanAnomaly = (134.9634 + 477198.8675 * numberOfCenturiesFromJ200) % 360;
-            let argumentOfLatitude = (93.2721 + 483202.0175 * numberOfCenturiesFromJ200) % 360;
-            let meanLongitudeRad = toRad(meanLongitude);
-            let meanAnomalyRad = toRad(meanAnomaly);
-            let sunMeanAnomalyRad = toRad(sun(date, lat, lon).meanAnomaly);
-            let argumentOfLatitudeRad = toRad(argumentOfLatitude);
-            let longitude = meanLongitude + 6.2888 * Math.sin(meanAnomalyRad) + 1.2740 * Math.sin(2 * meanLongitudeRad - 2 * argumentOfLatitudeRad) + 0.6583 * Math.sin(sunMeanAnomalyRad);
-            let latitude = 5.1281 * Math.sin(argumentOfLatitudeRad) + 0.2806 * Math.sin(meanAnomalyRad + argumentOfLatitudeRad) + 0.2777 * Math.sin(meanAnomalyRad - argumentOfLatitudeRad);
-            let obliquityOfTheEcliptic = 23.439291 - 0.013004 * numberOfCenturiesFromJ200;
-            let eclipticLatitude = toRad(latitude);
-            let eclipticLongitude = toRad(longitude);
-            let obliquityOfTheEclipticRad = toRad(obliquityOfTheEcliptic);
-            let rightAscension = toDeg(Math.atan2(Math.sin(eclipticLongitude) * Math.cos(obliquityOfTheEclipticRad) - Math.tan(eclipticLatitude) * Math.sin(obliquityOfTheEclipticRad), Math.cos(eclipticLongitude)));
-            let declination = toDeg(Math.asin(Math.sin(eclipticLatitude) * Math.cos(obliquityOfTheEclipticRad) + Math.cos(eclipticLatitude) * Math.sin(obliquityOfTheEclipticRad) * Math.sin(eclipticLongitude)));
-            let universalTime = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-            let greenwichMeanSiderealTime = (280.46061837 + 360.98564736629 * (julianDate - 2451545.0) + 0.000387933 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 - numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 * numberOfCenturiesFromJ200 / 38710000) % 360;
-            let localHourAngle = (greenwichMeanSiderealTime + lon - rightAscension) % 360;
-            let altitude = toDeg(Math.asin(Math.sin(toRad(lat)) * Math.sin(toRad(declination)) + Math.cos(toRad(lat)) * Math.cos(toRad(declination)) * Math.cos(toRad(localHourAngle))));
-            let cosAzimuthNumerator = Math.sin(toRad(declination)) - Math.sin(toRad(lat)) * Math.sin(toRad(altitude));
-            let cosAzimuthDenominator = Math.cos(toRad(lat)) * Math.cos(toRad(altitude));
-            let cosAzimuth = cosAzimuthNumerator / cosAzimuthDenominator;
-            let azimuth = toDeg(Math.acos(cosAzimuth));
-            if (Math.sin(toRad(localHourAngle)) > 0) {
-                azimuth = 360 - azimuth;
-            }
-            return { altitude: altitude, azimuth: azimuth };
-        };
-
-        const terminatorPath = [];
-        const nSamples = 180;
-
-        for (let i = 0; i <= nSamples; i++) {
-            const latDeg = -90 + (180 / nSamples) * i;
-            const latRad = toRad(latDeg);
-
-            let cosH = -Math.tan(latRad) * Math.tan(toRad(sun(date, lat, lon).declination));
-            cosH = Math.max(-1, Math.min(1, cosH));
-            const H_rad = Math.acos(cosH);
-            const H_deg = toDeg(H_rad);
-
-            const normalizeLon = (lon_val) => {
-                let normalized = lon_val % 360;
-                if (normalized > 180) normalized -= 360;
-                if (normalized < -180) normalized += 360;
-                return normalized;
-            };
-
-            let lonWest_0_360 = (sun(date, lat, lon).azimuth - H_deg);
-            terminatorPath.push([normalizeLon(lonWest_0_360), latDeg]);
+        function latitude(lng) {
+            return sunCalc.rad2deg(Math.atan(-Math.cos(sunCalc.deg2rad(sunCalc.observer_hour_angle(sunCalc.data.nu, lng, sunCalc.data.alpha))) / Math.tan(sunCalc.deg2rad(sunCalc.data.delta))));
         }
 
-        for (let i = nSamples; i >= 0; i--) {
-            const latDeg = -90 + (180 / nSamples) * i;
-            const latRad = toRad(latDeg);
+        let latLngs = [];
+        let startMinus = -180;
 
-            const normalizeLon = (lon_val) => {
-                let normalized = lon_val % 360;
-                if (normalized > 180) normalized -= 360;
-                if (normalized < -180) normalized += 360;
-                return normalized;
-            };
-
-            let cosH = -Math.tan(latRad) * Math.tan(toRad(sun(date, lat, lon).declination));
-            cosH = Math.max(-1, Math.min(1, cosH));
-            const H_rad = Math.acos(cosH);
-            const H_deg = toDeg(H_rad);
-
-            let lonEast_0_360 = (sun(date, lat, lon).azimuth + H_deg);
-            terminatorPath.push([normalizeLon(lonEast_0_360), latDeg]);
+        for (let i = 0; i <= 360; i++) {
+            let lng = startMinus + i;
+            let lat = latitude(lng);
+            latLngs[i + 1] = [lat, lng];
         }
-
-        const validCoords = terminatorPath.filter(c => !isNaN(c[0]) && !isNaN(c[1]));
-
-        if (validCoords.length < 3) return { type: "FeatureCollection", features: [] };
-        if (validCoords.length > 0 && (validCoords[0][0] !== validCoords[validCoords.length - 1][0] || validCoords[0][1] !== validCoords[validCoords.length - 1][1])) {
-            validCoords.push(validCoords[0]);
+        if (sunCalc.data.delta < 0) {
+            latLngs[0] = [90, startMinus];
+            latLngs[latLngs.length] = [90, 180];
+        } else {
+            latLngs[0] = [-90, startMinus];
+            latLngs[latLngs.length] = [-90, 180];
         }
 
         return {
-            type: "Feature",
-            geometry: { type: "Polygon", coordinates: [validCoords] },
-            properties: {}
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {},
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [
+                                ...latLngs.map(latLng => {
+                                    return [latLng[1], latLng[0]];
+                                }),
+                                [latLngs[0][1], latLngs[0][0]]
+                            ].slice().reverse()
+                        ]
+                    }
+                }
+            ]
         };
     }
 

@@ -6,8 +6,8 @@
         <meta name="description" content="Visualizador de incêndios em Portugal com dados de satélite e risco">
         <title>Portugal Fire Map</title>
         <link rel="icon" type="image/x-icon" href="img/fire_icon.png">
-        <link href="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" xintegrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0xXh+n/sJj/ArGFB2+XzL1/9b6+bW+w4s6+fV2+2b6/A7Bw3+y2P+7/K2w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="stylesheet" href="https://unpkg.com/mapbox-gl/dist/mapbox-gl.css">
+        <link rel="stylesheet" href="https://unpkg.com/@fortawesome/fontawesome-free/css/all.css" />
         <link rel="stylesheet" href="css/style.css">
     </head>
     <body>
@@ -69,8 +69,9 @@
                 </section>
             </div>
         </aside>
-        <script src="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+        <script src="https://unpkg.com/mapbox-gl/dist/mapbox-gl.js" defer></script>
+        <script src="https://unpkg.com/chart.js/dist/chart.umd.js" defer></script>
+        <script src="js/suncalc.js" defer></script>
         <script src="js/script.js" defer></script>
     </body>
 </html>
