@@ -698,7 +698,7 @@
             if (!map.getSource(sourceId)) {
                 map.addSource(sourceId, {
                     type: 'raster',
-                    tiles: [`http://maps.openweathermap.org/maps/2.0/weather/${weatherKey}/{z}/{x}/{y}?appid=${WEATHER_API_APP_ID}`],
+                    tiles: [`https://maps.openweathermap.org/maps/2.0/weather/${weatherKey}/{z}/{x}/{y}?appid=${WEATHER_API_APP_ID}`],
                     tileSize: 256
                 });
             }
