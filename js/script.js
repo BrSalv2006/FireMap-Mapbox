@@ -176,6 +176,7 @@
                 changeElementSizeById(previouslyActiveIcon.id, BASE_FIRE_SIZE);
                 previouslyActiveIcon.classList.remove('dot-active');
             }
+
             hideSidebar();
             window.history.pushState('fogo', '', window.location.href.split('?')[0]);
         });
@@ -324,23 +325,48 @@
     const customLayerControl = document.createElement('div');
     customLayerControl.className = 'mapboxgl-ctrl mapboxgl-ctrl-group custom-controls';
 
-    const createCategoryContainer = (title, parent) => {
+    const categoriesWrapper = document.createElement('div');
+    categoriesWrapper.className = 'custom-controls-categories-wrapper';
+    customLayerControl.appendChild(categoriesWrapper);
+
+    const createCategoryContainer = (title, parent, isInitiallyCollapsed = false) => {
         const container = document.createElement('div');
         container.className = 'layer-category-container';
-        container.innerHTML = `<div class="layer-category-title">${title}</div>`;
+        if (isInitiallyCollapsed) {
+            container.classList.add('collapsed');
+        }
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'layer-category-title';
+        titleDiv.innerHTML = `${title} <i class="fas fa-chevron-${isInitiallyCollapsed ? 'down' : 'up'}"></i>`;
+
         const buttonsContainer = document.createElement('div');
         buttonsContainer.className = 'overlay-buttons-container';
+
+        titleDiv.addEventListener('click', () => {
+            container.classList.toggle('collapsed');
+            const icon = titleDiv.querySelector('i');
+            if (container.classList.contains('collapsed')) {
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            } else {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        });
+
+        container.appendChild(titleDiv);
         container.appendChild(buttonsContainer);
         parent.appendChild(container);
         return buttonsContainer;
     };
 
-    const baseLayerButtonsContainer = createCategoryContainer('Camadas Base', customLayerControl);
-    const fireButtonsContainer = createCategoryContainer('Incêndios', customLayerControl);
-    const satelliteButtonsContainer = createCategoryContainer('Satélite', customLayerControl);
-    const riskButtonsContainer = createCategoryContainer('Risco de Incêndio', customLayerControl);
-    const weatherButtonsContainer = createCategoryContainer('Meteorologia', customLayerControl);
-    const dayNightButtonsContainer = createCategoryContainer('Ciclo Dia/Noite', customLayerControl);
+    const baseLayerButtonsContainer = createCategoryContainer('Camadas Base', categoriesWrapper, true);
+    const fireButtonsContainer = createCategoryContainer('Incêndios', categoriesWrapper, true);
+    const satelliteButtonsContainer = createCategoryContainer('Satélite', categoriesWrapper, true);
+    const riskButtonsContainer = createCategoryContainer('Risco de Incêndio', categoriesWrapper, true);
+    const weatherButtonsContainer = createCategoryContainer('Meteorologia', categoriesWrapper, true);
+    const dayNightButtonsContainer = createCategoryContainer('Ciclo Dia/Noite', categoriesWrapper, true);
 
     function updateBaseLayerButtonState(activeLayerName) {
         for (const layerName in baseLayerButtons) {
