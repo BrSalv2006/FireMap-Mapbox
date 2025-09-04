@@ -1,79 +1,79 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang='pt'>
 	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<meta name="description" content="Visualizador de incêndios em Portugal com dados de satélite e risco" />
+		<meta charset='UTF-8'/>
+		<meta content='width=device-width, initial-scale=1.0' name='viewport'/>
+		<meta content='Visualizador de incêndios em Portugal com dados de satélite e risco' name='description'/>
 		<title>Mapa de Incêndios Portugal</title>
-		<link rel="icon" type="image/x-icon" href="img/fire_icon.png" />
-		<link rel="stylesheet" href="https://unpkg.com/mapbox-gl/dist/mapbox-gl.css" />
-		<link rel="stylesheet" href="https://unpkg.com/@fortawesome/fontawesome-free/css/all.css" />
-		<link rel="stylesheet" href="css/style.css" />
+		<link href='img/fire_icon.png' rel='icon' type='image/x-icon'/>
+		<link href='https://unpkg.com/mapbox-gl/dist/mapbox-gl.css' rel='stylesheet'/>
+		<link href='https://unpkg.com/@fortawesome/fontawesome-free/css/all.css' rel='stylesheet'/>
+		<link href='css/style.css' rel='stylesheet'/>
 	</head>
 	<body>
-		<div id="map"></div>
-		<div id="loader" class="loader" style="display: none">A carregar...</div>
-		<div id="error-container" class="error-message-container"></div>
-		<aside class="sidebar" aria-label="Detalhes do Incêndio">
-			<div class="sidebar-content">
-				<section class="card">
-					<div class="card-body">
-						<h4 class="card-title">Local</h4>
-						<p class="f-local"></p>
-						<h4 class="card-title">Início</h4>
-						<p class="f-start"></p>
-						<h4 class="card-title">Natureza</h4>
-						<p class="f-nature"></p>
-						<h4 class="card-title">Localização</h4>
-						<p class="f-location"></p>
+		<div id='map'></div>
+		<div class='loader' id='loader' style='display: none'>A carregar...</div>
+		<div class='error-message-container' id='error-container'></div>
+		<aside aria-label='Detalhes do Incêndio' class='sidebar'>
+			<div class='sidebar-content'>
+				<section class='card'>
+					<div class='card-body'>
+						<h4 class='card-title'>Local</h4>
+						<p class='f-local'></p>
+						<h4 class='card-title'>Início</h4>
+						<p class='f-start'></p>
+						<h4 class='card-title'>Natureza</h4>
+						<p class='f-nature'></p>
+						<h4 class='card-title'>Localização</h4>
+						<p class='f-location'></p>
 						<p>
-							<small>Última atualização: <span class="f-update"></span></small>
+							<small>Última atualização: <span class='f-update'></span></small>
 						</p>
 					</div>
 				</section>
-				<section class="card">
-					<div class="card-body">
-						<h4 class="card-title">Meios</h4>
-						<div class="assets">
-							<img class="assets-icon" src="img/fireman.svg" alt="Operacionais" />
-							<span class="assets-nr f-man"></span>
-							<img class="assets-icon" src="img/firetruck.svg" alt="Meios Terrestres" />
-							<span class="assets-nr f-terrain"></span>
-							<img class="assets-icon" src="img/plane.svg" alt="Meios Aéreos" />
-							<span class="assets-nr f-aerial"></span>
+				<section class='card'>
+					<div class='card-body'>
+						<h4 class='card-title'>Meios</h4>
+						<div class='assets'>
+							<img alt='Operacionais' class='assets-icon' src='img/fireman.svg'/>
+							<span class='assets-nr f-man'></span>
+							<img alt='Meios Terrestres' class='assets-icon' src='img/firetruck.svg'/>
+							<span class='assets-nr f-terrain'></span>
+							<img alt='Meios Aéreos' class='assets-icon' src='img/plane.svg'/>
+							<span class='assets-nr f-aerial'></span>
 						</div>
-						<canvas id="fireChart" width="400" height="350"></canvas>
+						<canvas height='350' id='fireChart' width='400'></canvas>
 					</div>
 				</section>
-				<section class="card extra">
-					<div class="card-body">
-						<h4 class="card-title">Informação extra</h4>
-						<div class="f-extra"></div>
+				<section class='card extra'>
+					<div class='card-body'>
+						<h4 class='card-title'>Informação extra</h4>
+						<div class='f-extra'></div>
 					</div>
 				</section>
-				<section class="card">
-					<div class="card-body">
-						<h4 class="card-title">Estado</h4>
-						<div class="f-status"></div>
+				<section class='card'>
+					<div class='card-body'>
+						<h4 class='card-title'>Estado</h4>
+						<div class='f-status'></div>
 					</div>
 				</section>
-				<section class="card">
-					<div class="card-body">
-						<h4 class="card-title">Meteorologia</h4>
-						<div class="f-meteo"></div>
+				<section class='card'>
+					<div class='card-body'>
+						<h4 class='card-title'>Meteorologia</h4>
+						<div class='f-meteo'></div>
 					</div>
 				</section>
-				<section class="card danger">
-					<div class="card-body">
-						<h4 class="card-title">Risco de Incêndio</h4>
-						<div class="f-danger"></div>
+				<section class='card danger'>
+					<div class='card-body'>
+						<h4 class='card-title'>Risco de Incêndio</h4>
+						<div class='f-danger'></div>
 					</div>
 				</section>
 			</div>
 		</aside>
-		<script src="https://unpkg.com/mapbox-gl/dist/mapbox-gl.js" defer></script>
-		<script src="https://unpkg.com/chart.js/dist/chart.umd.js" defer></script>
-		<script src="js/suncalc.js" defer></script>
-		<script src="js/script.js" defer></script>
+		<script defer src='https://unpkg.com/mapbox-gl/dist/mapbox-gl.js'></script>
+		<script defer src='https://unpkg.com/chart.js/dist/chart.umd.js'></script>
+		<script defer src='js/suncalc.js'></script>
+		<script defer src='js/script.js'></script>
 	</body>
 </html>
