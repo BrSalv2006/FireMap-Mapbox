@@ -3,31 +3,6 @@ importScripts('https://unpkg.com/@turf/turf/turf.min.js');
 let workerPortugalGeometry;
 let workerConcelhosGeoJSON;
 
-const importanceFireData = {
-    number: 0,
-    topImportance: 0,
-    average: 0
-};
-
-function calculateImportanceValue(data) {
-    const currentHour = new Date().getHours();
-    const isNightTime = currentHour >= 20 || currentHour <= 9;
-
-    let importance;
-    if (isNightTime) {
-        importance = data.man * 1.5 + data.terrain * 4.5;
-    } else {
-        importance = data.man * 1 + data.terrain * 2.5 + data.aerial * 10;
-    }
-
-    importanceFireData.number++;
-    if (importance > importanceFireData.topImportance) {
-        importanceFireData.topImportance = importance;
-    }
-    importanceFireData.average = (importanceFireData.average * (importanceFireData.number - 1) + importance) / importanceFireData.number;
-    data.importance = importance;
-}
-
 async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -39,7 +14,8 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
                 }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return response;
+            const data = await response.json();
+            return data;
         } catch (error) {
             if (i === retries - 1) throw error;
             await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
@@ -47,27 +23,9 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
     }
 }
 
-async function fetchFireData(baseParams, satelliteType) {
-    const apiEndpoints = {
-        modis: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/MODIS_Thermal_v1/FeatureServer/0/query',
-        viirs: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0/query'
-    };
-    try {
-        const response = await fetchWithRetry(`${apiEndpoints[satelliteType]}?${new URLSearchParams(baseParams)}`);
-        const data = await response.json();
-        return data?.features || [];
-    } catch (error) {
-        self.postMessage({
-            type: 'error',
-            message: `Falha ao obter dados ${satelliteType}: ${error.message}`
-        });
-        return [];
-    }
-}
-
 function processFirePoints(fireFeatures, boundaryGeometry) {
     const satelliteData = { points: [], areas: null };
-    fireFeatures.forEach(f => {
+    fireFeatures.features.forEach(f => {
         const props = f.properties;
         const acqDate = props.ACQ_DATE || props.acq_time;
         const date = new Date(acqDate).toLocaleString();
@@ -138,27 +96,14 @@ function getRiskColor(d) {
     return 'rgb(255, 255, 255)';
 }
 
-async function fetchRiskData(url) {
-    try {
-        const response = await fetchWithRetry(url);
-        return await response.json();
-    } catch (error) {
-        return { success: false, message: `Falha ao obter dados de risco: ${error.message}` };
-    }
-}
-
 self.onmessage = async function (e) {
     const { type, url, dayRange } = e.data;
 
     try {
         if (type === 'initData') {
             self.postMessage({ type: 'progress', message: 'A carregar dados geográficos...' });
-            const [responsePortugal, responseConcelhos] = await Promise.all([
-                fetchWithRetry(`${url}/json/portugal.json`),
-                fetchWithRetry(`${url}/json/concelhos.json`)
-            ]);
-            workerPortugalGeometry = await responsePortugal.json();
-            workerConcelhosGeoJSON = await responseConcelhos.json();
+            workerPortugalGeometry = await fetchWithRetry(`${url}/json/portugal.json`);
+            workerConcelhosGeoJSON = await fetchWithRetry(`${url}/json/concelhos.json`)
             self.postMessage({ type: 'initDataComplete' });
         } else if (type === 'satelliteData') {
             self.postMessage({ type: 'progress', message: `A obter dados de satélite...` });
@@ -173,7 +118,7 @@ self.onmessage = async function (e) {
             const endDate = new Date().getTime();
             const startDate = endDate - (dayRange * 86400000);
 
-            const baseParams = {
+            const satelliteBaseParams = {
                 returnGeometry: true,
                 time: `${startDate}, ${endDate}`,
                 outSR: 4326,
@@ -194,8 +139,8 @@ self.onmessage = async function (e) {
             const satelliteLayers = {};
 
             self.postMessage({ type: 'progress', message: 'A obter dados MODIS...' });
-            const modisFeatures = await fetchFireData(baseParams, 'modis');
-            if (modisFeatures.length > 0) {
+            const modisFeatures = await fetchWithRetry(`https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/MODIS_Thermal_v1/FeatureServer/0/query?${new URLSearchParams(satelliteBaseParams)}`);
+            if (modisFeatures) {
                 self.postMessage({ type: 'progress', message: 'A processar dados MODIS...' });
                 const processedModisData = processFirePoints(modisFeatures, featureGeometry);
                 calculateBurntAreas(processedModisData);
@@ -206,8 +151,8 @@ self.onmessage = async function (e) {
             }
 
             self.postMessage({ type: 'progress', message: 'A obter dados VIIRS...' });
-            const viirsFeatures = await fetchFireData(baseParams, 'viirs');
-            if (viirsFeatures.length > 0) {
+            const viirsFeatures = await fetchWithRetry(`https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0/query?${new URLSearchParams(satelliteBaseParams)}`);
+            if (viirsFeatures) {
                 self.postMessage({ type: 'progress', message: 'A processar dados VIIRS...' });
                 const processedViirsData = processFirePoints(viirsFeatures, featureGeometry);
                 calculateBurntAreas(processedViirsData);
@@ -231,24 +176,23 @@ self.onmessage = async function (e) {
             self.postMessage({ type: 'progress', message: 'A obter dados de Risco...' });
 
             const riskUrls = [
-                'https://api-dev.fogos.pt/v1/risk-today',
-                'https://api-dev.fogos.pt/v1/risk-tomorrow',
-                'https://api-dev.fogos.pt/v1/risk-after'
+                'https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d0.json',
+                'https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d1.json',
             ];
 
-            const riskDataResponses = await Promise.all(riskUrls.map(url => fetchRiskData(url)));
+            const riskDataResponses = await Promise.all(riskUrls.map(url => fetchWithRetry(url)));
 
             riskDataResponses.forEach((dataResponse, index) => {
-                if (dataResponse.success) {
-                    const date = new Date(dataResponse.data.dataPrev);
+                if (dataResponse) {
+                    const date = new Date(dataResponse.dataPrev);
                     const geoJson = {
                         type: 'FeatureCollection',
                         features: workerConcelhosGeoJSON.features.map(feature => ({
                             ...feature,
                             properties: {
                                 ...feature.properties,
-                                rcm: dataResponse.data.local[feature.properties.DICO]?.data?.rcm,
-                                fillColor: getRiskColor(dataResponse.data.local[feature.properties.DICO]?.data?.rcm)
+                                rcm: dataResponse.local[feature.properties.DICO]?.data?.rcm,
+                                fillColor: getRiskColor(dataResponse.local[feature.properties.DICO]?.data?.rcm)
                             }
                         }))
                     };
@@ -269,17 +213,53 @@ self.onmessage = async function (e) {
         } else if (type === 'firesData') {
             self.postMessage({ type: 'progress', message: 'A obter novos dados de incêndios...' });
             try {
-                const response = await fetchWithRetry('https://api-dev.fogos.pt/new/fires');
-                const data = await response.json();
+                const firesBaseParams = {
+                    where: 'CodNatureza IN(3105, 3103, 3101)',
+                    outSR: 4326,
+                    outFields: '*',
+                    f: 'geojson'
+                };
+                const url = 'https://prociv-agserver.geomai.mai.gov.pt/arcgis/rest/services/Ocorrencias_Base/FeatureServer/0/query';
+                const data = await fetchWithRetry(`${url}?${new URLSearchParams(firesBaseParams)}`);
 
-                if (data.success) {
-                    const processedFires = data.data.map(fire => {
-                        calculateImportanceValue(fire);
-                        return fire;
+                if (data) {
+                    const statusNameToCode = {
+                        "Despacho de 1.º Alerta": 4,
+                        "Chegada ao TO": 6,
+                        "Em Curso": 5,
+                        "Em Resolução": 7,
+                        "Em Conclusão": 8,
+                        "Vigilância": 9,
+                        "Encerrada": 10,
+                        "Falso Alarme": 11,
+                        "Falso Alerta": 12,
+                        "Despacho": 3,
+                        "Conclusão": 8
+                    };
+
+                    const processedFires = data.features.map(fire => {
+                        const p = fire.properties;
+                        const fireData = {
+                            id: p.Numero,
+                            lat: p.Latitude,
+                            lng: p.Longitude,
+                            statusCode: statusNameToCode[p.EstadoOcorrencia] || 0,
+                            man: p.Operacionais,
+                            aerial: p.NumeroMeiosAereosEnvolvidos,
+                            terrain: p.NumeroMeiosTerrestresEnvolvidos,
+                            location: `${p.Concelho}, ${p.Freguesia}, ${p.Localidade}`,
+                            natureza: p.Natureza,
+                            startDate: new Date(p.DataInicioOcorrencia).toLocaleString(),
+                            updated: new Date(p.DataDosDados).toLocaleString(),
+                            status: p.EstadoOcorrencia,
+                            important: (p.NumeroMeiosAereosEnvolvidos > 0 || p.Operacionais > 50)
+                        };
+
+                        return fireData;
                     });
-                    self.postMessage({ type: 'firesResult', data: processedFires, fireImportanceData: importanceFireData });
+                    self.postMessage({ type: 'firesResult', data: processedFires });
                 } else {
-                    self.postMessage({ type: 'error', message: `A chamada à API fogos.pt para novos incêndios não foi bem-sucedida: ${data.message}` });
+                    self.postMessage({ type: 'error', message: `A chamada à API prociv-agserver.geomai.mai.gov.pt para novos incêndios não foi bem-sucedida: ${data.message}` });
                 }
             } catch (error) {
                 self.postMessage({ type: 'error', message: `Erro ao obter novos dados de incêndios: ${error.message}` });

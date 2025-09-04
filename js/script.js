@@ -15,7 +15,6 @@
     let detailsChart = null;
 
     const BASE_FIRE_SIZE = 22;
-    const ACTIVE_FIRE_SIZE = 48;
     const WEATHER_API_APP_ID = '89ae8b33d0bde5d8a89a7f5550e87869';
 
     const weatherLayerMapping = {
@@ -173,7 +172,6 @@
         map.on('click', () => {
             const previouslyActiveIcon = document.querySelector('.dot-active');
             if (previouslyActiveIcon) {
-                changeElementSizeById(previouslyActiveIcon.id, BASE_FIRE_SIZE);
                 previouslyActiveIcon.classList.remove('dot-active');
             }
 
@@ -741,31 +739,7 @@
         }
     }
 
-    function getPonderatedImportanceFactor(importance, statusCode, fireImportanceData) {
-        if ([11, 12].includes(statusCode)) return 0.6;
-        let importanceSize;
-        if (importance > fireImportanceData.average) {
-            importanceSize = (importance / fireImportanceData.topImportance) * 2.3 + 0.5 - (fireImportanceData.average / importance);
-            if (importanceSize > 1.75) importanceSize = 1.75;
-            if (importanceSize < 1) importanceSize = 1;
-        } else if (importance < fireImportanceData.average) {
-            importanceSize = (importance / fireImportanceData.average) * 0.8;
-            if (importanceSize < 0.5) importanceSize = 0.5;
-        } else {
-            importanceSize = 1;
-        }
-        return importanceSize;
-    }
-
-    function changeElementSizeById(id, size) {
-        const markerHtml = document.getElementById(id);
-        if (markerHtml) {
-            markerHtml.style.height = `${size}px`;
-            markerHtml.style.width = `${size}px`;
-        }
-    }
-
-    function addFireMarker(fire, mapInstance, fireImportanceData) {
+    function addFireMarker(fire, mapInstance) {
         const { lat, lng, id: fireId, statusCode } = fire;
         const statusConfig = Object.values(fireStatusLayers).find(s => s.statusCode === statusCode);
 
@@ -788,14 +762,11 @@
                 mapInstance.flyTo({ center: [lng, lat], zoom: 9 });
             }
 
-            const sizeFactor = getPonderatedImportanceFactor(fire.importance, statusCode, fireImportanceData);
-            const size = isInitiallyActive ? ACTIVE_FIRE_SIZE : sizeFactor * BASE_FIRE_SIZE;
-
             const el = document.createElement('div');
             el.className = 'fire-marker';
             el.innerHTML = `<i class="${iconClass}" id="fire-${fireId}"></i>`;
-            el.style.width = `${size}px`;
-            el.style.height = `${size}px`;
+            el.style.width = `${BASE_FIRE_SIZE}px`;
+            el.style.height = `${BASE_FIRE_SIZE}px`;
 
             const layerKey = `Incêndios - ${Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode)}`;
             if (overlayLayers[layerKey] && !overlayLayers[layerKey].active) {
@@ -817,11 +788,9 @@
                 const previouslyActiveIcon = document.querySelector('.dot-active');
 
                 if (previouslyActiveIcon && previouslyActiveIcon !== activeIcon) {
-                    changeElementSizeById(previouslyActiveIcon.id, BASE_FIRE_SIZE);
                     previouslyActiveIcon.classList.remove('dot-active');
                 }
 
-                changeElementSizeById(`fire-${fireId}`, ACTIVE_FIRE_SIZE);
                 activeIcon.classList.add('dot-active');
                 mapInstance.flyTo({ center: [lng, lat], zoom: 9 });
 
@@ -833,18 +802,16 @@
     }
 
     function updateSidebarDetails(fire, lat, lng) {
-        const momentDate = new Date(fire.updated.sec * 1000).toLocaleString();
         const locationLink = `<a href="https://www.google.com/maps/search/${lat},${lng}" target="_blank" rel="noopener noreferrer"><i class="fas fa-map-marker-alt"></i> ${lat},${lng}</a>`;
-        const locationText = fire.localidade ? `${fire.location} - ${fire.localidade}` : fire.location;
 
-        document.querySelector('.f-local').innerHTML = locationText;
+        document.querySelector('.f-local').innerHTML = fire.location;
         document.querySelector('.f-man').textContent = fire.man;
         document.querySelector('.f-aerial').textContent = fire.aerial;
         document.querySelector('.f-terrain').textContent = fire.terrain;
         document.querySelector('.f-location').innerHTML = locationLink;
         document.querySelector('.f-nature').textContent = fire.natureza;
-        document.querySelector('.f-update').textContent = momentDate;
-        document.querySelector('.f-start').textContent = `${fire.date} ${fire.hour}`;
+        document.querySelector('.f-update').textContent = fire.updated;
+        document.querySelector('.f-start').textContent = fire.startDate;
 
         fetchFireDetails(fire.id);
     }
@@ -986,7 +953,7 @@
         currentWorker = new Worker('js/worker.js');
 
         currentWorker.onmessage = (e) => {
-            const { type, message, data, fireImportanceData } = e.data;
+            const { type, message, data } = e.data;
             if (type === 'progress') {
                 loader.innerText = message;
             } else if (type === 'initDataComplete') {
@@ -1060,7 +1027,7 @@
                 }
                 allFireMarkersByStatus = {};
 
-                data.forEach(fire => addFireMarker(fire, map, fireImportanceData));
+                data.forEach(fire => addFireMarker(fire, map));
                 checkAllDataProcessed();
                 rebuildOverlayControls();
             } else if (type === 'error') {
