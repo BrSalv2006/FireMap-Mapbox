@@ -134,10 +134,19 @@ async function handleRiskData() {
 			type: 'error', message: 'GeoJSON dos Concelhos não carregado.'
 		});
 	}
-	const riskUrls = ['https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d0.json', 'https://api.ipma.pt/open-data/forecast/meteorology/rcm/rcm-d1.json'];
+
+	const riskUrl = 'https://www.ipma.pt/en/riscoincendio/rcm.pt/';
 	const riskLayers = {};
-	const responses = await Promise.all(riskUrls.map((url) => fetchWithRetry(url).catch(() => null)));
-	responses.forEach((data) => {
+	let response = await fetch(riskUrl);
+	let text = await response.text();
+	const pattern = /rcmF\[\d+\]\s*=\s*(\{\s*[\s\S]*?\s*});/g;
+	const matches = text.matchAll(pattern);
+	const jsonResult = [];
+	matches.forEach(([_, data]) => {
+		jsonResult.push(JSON.parse(data.trim()));
+	});
+
+	jsonResult.forEach((data) => {
 		if (data) {
 			const date = new Date(data.dataPrev).toLocaleDateString();
 			riskLayers[`Risco ${date}`] = {
@@ -149,6 +158,8 @@ async function handleRiskData() {
 			};
 		}
 	});
+
+
 	if (Object.keys(riskLayers).length > 0) {
 		self.postMessage({
 			type: 'riskResult', data: riskLayers
@@ -186,9 +197,16 @@ async function handleFiresData() {
 		'Falso Alarme': 11,
 		'Falso Alerta': 12,
 	};
-	const processedFires = data.features.map(({ properties: p }) => ({
-		id: p.Numero, lat: p.Latitude, lng: p.Longitude, statusCode: statusMap[p.EstadoOcorrencia] || 0, man: p.Operacionais, aerial: p.NumeroMeiosAereosEnvolvidos, terrain: p.NumeroMeiosTerrestresEnvolvidos, location: `${p.Concelho}, ${p.Freguesia}, ${p.Localidade}`, natureza: p.Natureza, status: p.EstadoOcorrencia, startDate: new Date(p.DataInicioOcorrencia).toLocaleString(), updated: new Date(p.DataDosDados).toLocaleString(), important: (['Em Curso'].includes(p.EstadoOcorrencia) && (p.NumeroMeiosAereosEnvolvidos > 0 || p.Operacionais > 50))
-	}));
+
+	const processedFires = [];
+	data.features.forEach((data) => {
+		let p = data.properties;
+		let now = new Date();
+		let start = new Date(p.DataInicioOcorrencia);
+		let timeElapsed = (now - start) / 3600000;
+		processedFires.push({ id: p.Numero, lat: p.Latitude, lng: p.Longitude, statusCode: statusMap[p.EstadoOcorrencia] || 0, man: p.Operacionais, aerial: p.NumeroMeiosAereosEnvolvidos, terrain: p.NumeroMeiosTerrestresEnvolvidos, location: p.Localidade ? `${p.Concelho}, ${p.Freguesia}, ${p.Localidade}` : `${p.Concelho}, ${p.Freguesia}`, natureza: p.Natureza, status: p.EstadoOcorrencia, startDate: new Date(p.DataInicioOcorrencia).toLocaleString(), updated: new Date(p.DataDosDados).toLocaleString(), important: (p.EstadoOcorrencia == 'Em Curso' && p.NumeroMeiosTerrestresEnvolvidos > 15 && timeElapsed >= 3) });
+	});
+
 	self.postMessage({
 		type: 'firesResult', data: processedFires
 	});

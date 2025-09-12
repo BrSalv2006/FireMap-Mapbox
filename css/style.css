@@ -210,7 +210,6 @@ canvas#fireChart {
 }
 
 .dot.status-99,
-.dot.status-important,
 .dot.status-99-r,
 .dot.status-5,
 .dot.status-7,
@@ -237,9 +236,9 @@ canvas#fireChart {
 	background-image: url("../img/ico_fake.svg");
 }
 
-.dot.status-99,
-.dot.status-important {
+.dot.status-99 {
 	background-color: #FF410C;
+	size:48px;
 }
 
 .dot.status-99-r {
