@@ -93,7 +93,7 @@ async function handleSatelliteData({
 			type: 'error', message: 'Geometria de Portugal não carregada.'
 		});
 	}
-	const boundary = turf.feature(workerPortugalGeometry.features[0].geometry);
+	const boundary = turf.feature(workerPortugalGeometry.geometries[0]);
 	const bbox = turf.bbox(boundary);
 	const time = `${Date.now() - dayRange * 86400000},${Date.now()}`;
 	const baseParams = new URLSearchParams({
@@ -229,6 +229,7 @@ self.onmessage = async ({ data }) => {
 				break;
 		}
 	} catch (err) {
+		console.error(err)
 		self.postMessage({
 			type: 'error', message: `Ocorreu um erro no worker: ${err.message}`
 		});
