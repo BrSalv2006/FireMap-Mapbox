@@ -9,7 +9,6 @@ const errorContainer = document.getElementById('error-container');
 let satelliteDataProcessed = false;
 let riskDataProcessed = false;
 let allFireMarkersByStatus = {};
-let dayNightInterval = null;
 let detailsChart = null;
 const BASE_FIRE_SIZE = 22;
 const WEATHER_API_APP_ID = '89ae8b33d0bde5d8a89a7f5550e87869';
@@ -84,12 +83,12 @@ const baseLayersConfig = {
 	}
 };
 const baseLayerButtons = {};
-let baseLayerButtonsContainer, fireButtonsContainer, satelliteButtonsContainer, riskButtonsContainer, weatherButtonsContainer, dayNightButtonsContainer;
+let baseLayerButtonsContainer, fireButtonsContainer, satelliteButtonsContainer, riskButtonsContainer, weatherButtonsContainer;
 
 function initializeOverlayLayers() {
 	for (const statusName in fireStatusLayers) {
 		const statusConfig = fireStatusLayers[statusName];
-		overlayLayers[statusName] = {
+		overlayLayers[`Incêndios - ${statusName}`] = {
 			id: `fires-status-${statusConfig.statusCode}-layer`, type: 'symbol', source: `fires-status-${statusConfig.statusCode}-data`, icon: statusConfig.icon, active: statusConfig.defaultActive, category: 'fire-status', statusCode: statusConfig.statusCode, sourceData: []
 		};
 	}
@@ -97,7 +96,7 @@ function initializeOverlayLayers() {
 		const weatherKey = weatherLayerMapping[layerName];
 		const sourceId = `weather-${weatherKey}-source`;
 		const layerId = `weather-${weatherKey}`;
-		overlayLayers[layerName] = {
+		overlayLayers[`Meteorologia - ${layerName}`] = {
 			id: layerId, type: 'raster', source: sourceId, icon: 'img/weather.png', legend: weatherKey, active: false, category: 'weather'
 		};
 	}
@@ -333,7 +332,6 @@ function initializeLayerBar() {
 	satelliteButtonsContainer = createCategoryDropdown('Satélite', layerBar);
 	riskButtonsContainer = createCategoryDropdown('Risco de Incêndio', layerBar);
 	weatherButtonsContainer = createCategoryDropdown('Meteorologia', layerBar);
-	dayNightButtonsContainer = createCategoryDropdown('Ciclo Dia/Noite', layerBar);
 	window.addEventListener('click', () => {
 		document.querySelectorAll('.layer-dropdown.open').forEach(d => d.classList.remove('open'));
 	});
@@ -406,18 +404,21 @@ function setupBaseLayerButtons() {
 const overlayButtons = {};
 
 function rebuildOverlayControls() {
-	const containers = [fireButtonsContainer, satelliteButtonsContainer, riskButtonsContainer, weatherButtonsContainer, dayNightButtonsContainer];
+	const containers = [fireButtonsContainer, satelliteButtonsContainer, riskButtonsContainer, weatherButtonsContainer];
 	containers.forEach(container => {
 		if (container) container.innerHTML = '';
 	});
+	if (overlayButtons['Ciclo Dia/Noite']) {
+		overlayButtons['Ciclo Dia/Noite'].remove();
+	}
 	for (const key in overlayButtons) {
 		delete overlayButtons[key];
 	}
+	const layerBar = document.getElementById('layer-bar');
 	for (const layerKey in overlayLayers) {
 		const layerConfig = overlayLayers[layerKey];
 		const button = document.createElement('button');
 		const iconSrc = layerConfig.icon || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3C%2Fsvg%3E';
-		button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
 		button.classList.toggle('active', layerConfig.active);
 		button.dataset.category = layerConfig.category;
 		button.dataset.layerId = layerConfig.id;
@@ -425,9 +426,7 @@ function rebuildOverlayControls() {
 			button.dataset.statusCode = layerConfig.statusCode;
 		}
 		button.addEventListener('click', () => {
-			const {
-				category, layerId, statusCode
-			} = button.dataset;
+			const { category, layerId, statusCode } = button.dataset;
 			let newActiveState = !button.classList.contains('active');
 			if (['risk', 'weather'].includes(category)) {
 				for (const key in overlayLayers) {
@@ -441,6 +440,14 @@ function rebuildOverlayControls() {
 					}
 				}
 			}
+			if (['day-night'].includes(category)) {
+				if (button.classList.contains('active')) {
+					button.classList.remove('active')
+				} else {
+					button.classList.add('active')
+				}
+			}
+
 			layerConfig.active = newActiveState;
 			button.classList.toggle('active', newActiveState);
 			if (category === 'fire-status') {
@@ -482,10 +489,7 @@ function rebuildOverlayControls() {
 			} else if (category === 'day-night') {
 				if (newActiveState) {
 					updateDayNightLayer();
-					dayNightInterval = setInterval(updateDayNightLayer, 5 * 60 * 1000);
 				} else {
-					clearInterval(dayNightInterval);
-					dayNightInterval = null;
 					if (map.getLayer('day-night-layer')) {
 						map.setLayoutProperty('day-night-layer', 'visibility', 'none');
 					}
@@ -497,16 +501,23 @@ function rebuildOverlayControls() {
 		const appendButton = (container) => {
 			if (container) container.appendChild(button);
 		};
-		if (layerConfig.category === 'fire-status') {
+		if (layerConfig.category === 'day-night') {
+			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
+			button.className = 'dropdown-toggle';
+			button.classList.toggle('active', layerConfig.active);
+			layerBar.appendChild(button);
+		} else if (layerConfig.category === 'fire-status') {
+			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
 			appendButton(fireButtonsContainer);
 		} else if (layerConfig.category === 'satellite') {
+			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
 			appendButton(satelliteButtonsContainer);
 		} else if (layerConfig.category === 'risk') {
+			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
 			appendButton(riskButtonsContainer);
 		} else if (layerConfig.category === 'weather') {
+			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
 			appendButton(weatherButtonsContainer);
-		} else if (layerConfig.category === 'day-night') {
-			appendButton(dayNightButtonsContainer);
 		}
 		overlayButtons[layerKey] = button;
 	}
@@ -656,7 +667,7 @@ function reapplyOverlayLayers() {
 				}
 				addRiskLegend();
 			} else if (layerConfig.category === 'weather') {
-				const weatherKey = weatherLayerMapping[layerKey];
+				const weatherKey = weatherLayerMapping[layerKey.replace('Meteorologia - ', '')];
 				const sourceId = `weather-${weatherKey}-source`;
 				const layerId = `weather-${weatherKey}`;
 				if (!map.getSource(sourceId)) {
@@ -691,8 +702,6 @@ function reapplyOverlayLayers() {
 			if (map.getLayer('day-night-layer')) {
 				map.setLayoutProperty('day-night-layer', 'visibility', 'none');
 			}
-			clearInterval(dayNightInterval);
-			dayNightInterval = null;
 		} else {
 			if (map.getLayer(layerConfig.id)) {
 				map.setLayoutProperty(layerConfig.id, 'visibility', 'none');
@@ -776,7 +785,7 @@ function addFireMarker(fire, mapInstance) {
 		el.innerHTML = `<i class='${iconClass}' id='fire-${fireId}'></i>`;
 		el.style.width = `${BASE_FIRE_SIZE}px`;
 		el.style.height = `${BASE_FIRE_SIZE}px`;
-		const layerKey = Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode);
+		const layerKey = `Incêndios - ${Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode)}`;
 		if (overlayLayers[layerKey] && !overlayLayers[layerKey].active) {
 			el.style.display = 'none';
 		}
