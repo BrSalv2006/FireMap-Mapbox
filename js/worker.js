@@ -93,7 +93,7 @@ async function handleSatelliteData({
 			type: 'error', message: 'Geometria de Portugal não carregada.'
 		});
 	}
-	const boundary = turf.feature(workerPortugalGeometry.geometries[0]);
+	const boundary = turf.feature(workerPortugalGeometry.features[0].geometry);
 	const bbox = turf.bbox(boundary);
 	const time = `${Date.now() - dayRange * 86400000},${Date.now()}`;
 	const baseParams = new URLSearchParams({
@@ -143,7 +143,7 @@ async function handleRiskData() {
 			riskLayers[`Risco ${date}`] = {
 				type: 'FeatureCollection', features: workerConcelhosGeoJSON.features.map((f) => ({
 					...f, properties: {
-						...f.properties, rcm: data.local[f.properties.DICO]?.data?.rcm, fillColor: getRiskColor(data.local[f.properties.DICO]?.data?.rcm)
+						...f.properties, rcm: data.local[f.properties.dtmn]?.data?.rcm, fillColor: getRiskColor(data.local[f.properties.dtmn]?.data?.rcm)
 					}
 				}))
 			};
@@ -202,6 +202,7 @@ self.onmessage = async ({data}) => {
 				break;
 		}
 	} catch (err) {
+		console.log(err)
 		self.postMessage({
 			type: 'error', message: `Ocorreu um erro no worker: ${err.message}`
 		});

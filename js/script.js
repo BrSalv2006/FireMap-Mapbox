@@ -128,7 +128,6 @@ function initializeMap() {
 	map.on('load', () => {
 		setupCustomLayerControls();
 		addWeatherLayers();
-		fetchAndApplyDynamicLayers();
 		rebuildOverlayControls();
 		updateBaseLayerButtonState('Standard - Default - Day');
 		updateDayNightLayer();
