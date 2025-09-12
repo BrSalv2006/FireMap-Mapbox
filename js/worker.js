@@ -149,7 +149,7 @@ async function handleRiskData() {
 	jsonResult.forEach((data) => {
 		if (data) {
 			const date = new Date(data.dataPrev).toLocaleDateString();
-			riskLayers[`Risco ${date}`] = {
+			riskLayers[date] = {
 				type: 'FeatureCollection', features: workerConcelhosGeoJSON.features.map((f) => ({
 					...f, properties: {
 						...f.properties, rcm: data.local[f.properties.dtmn]?.data?.rcm, fillColor: getRiskColor(data.local[f.properties.dtmn]?.data?.rcm)

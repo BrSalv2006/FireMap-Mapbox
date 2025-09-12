@@ -84,11 +84,12 @@ const baseLayersConfig = {
 	}
 };
 const baseLayerButtons = {};
+let baseLayerButtonsContainer, fireButtonsContainer, satelliteButtonsContainer, riskButtonsContainer, weatherButtonsContainer, dayNightButtonsContainer;
 
 function initializeOverlayLayers() {
 	for (const statusName in fireStatusLayers) {
 		const statusConfig = fireStatusLayers[statusName];
-		overlayLayers[`Incêndios - ${statusName}`] = {
+		overlayLayers[statusName] = {
 			id: `fires-status-${statusConfig.statusCode}-layer`, type: 'symbol', source: `fires-status-${statusConfig.statusCode}-data`, icon: statusConfig.icon, active: statusConfig.defaultActive, category: 'fire-status', statusCode: statusConfig.statusCode, sourceData: []
 		};
 	}
@@ -96,7 +97,7 @@ function initializeOverlayLayers() {
 		const weatherKey = weatherLayerMapping[layerName];
 		const sourceId = `weather-${weatherKey}-source`;
 		const layerId = `weather-${weatherKey}`;
-		overlayLayers[`Meteorologia - ${layerName}`] = {
+		overlayLayers[layerName] = {
 			id: layerId, type: 'raster', source: sourceId, icon: 'img/weather.png', legend: weatherKey, active: false, category: 'weather'
 		};
 	}
@@ -132,7 +133,8 @@ function initializeMap() {
 		});
 	});
 	map.on('load', () => {
-		setupCustomLayerControls();
+		initializeLayerBar();
+		setupBaseLayerButtons();
 		addWeatherLayers();
 		rebuildOverlayControls();
 		updateBaseLayerButtonState('Standard - Default - Day');
@@ -299,44 +301,43 @@ function generateWeatherLegend(title, stops, unit) {
 	currentWeatherLegend = legendContainer;
 }
 
-const customLayerControl = document.createElement('div');
-customLayerControl.className = 'mapboxgl-ctrl mapboxgl-ctrl-group custom-controls';
-const categoriesWrapper = document.createElement('div');
-categoriesWrapper.className = 'custom-controls-categories-wrapper';
-customLayerControl.appendChild(categoriesWrapper);
-const createCategoryContainer = (title, parent, isInitiallyCollapsed = false) => {
-	const container = document.createElement('div');
-	container.className = 'layer-category-container';
-	if (isInitiallyCollapsed) {
-		container.classList.add('collapsed');
-	}
-	const titleDiv = document.createElement('div');
-	titleDiv.className = 'layer-category-title';
-	titleDiv.innerHTML = `${title} <i class='fas fa-chevron-${isInitiallyCollapsed ? 'down' : 'up'}'></i>`;
-	const buttonsContainer = document.createElement('div');
-	buttonsContainer.className = 'overlay-buttons-container';
-	titleDiv.addEventListener('click', () => {
-		container.classList.toggle('collapsed');
-		const icon = titleDiv.querySelector('i');
-		if (container.classList.contains('collapsed')) {
-			icon.classList.remove('fa-chevron-up');
-			icon.classList.add('fa-chevron-down');
-		} else {
-			icon.classList.remove('fa-chevron-down');
-			icon.classList.add('fa-chevron-up');
+const createCategoryDropdown = (title, parent) => {
+	const dropdownContainer = document.createElement('div');
+	dropdownContainer.className = 'layer-dropdown';
+	const toggleButton = document.createElement('button');
+	toggleButton.className = 'dropdown-toggle';
+	toggleButton.innerHTML = `${title} <i class='fas fa-chevron-down' style='font-size: 0.8em; margin-left: 5px;'></i>`;
+	const menu = document.createElement('div');
+	menu.className = 'dropdown-menu';
+	toggleButton.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const isOpen = dropdownContainer.classList.contains('open');
+		document.querySelectorAll('.layer-dropdown.open').forEach(d => {
+			d.classList.remove('open');
+		});
+		if (!isOpen) {
+			dropdownContainer.classList.add('open');
 		}
 	});
-	container.appendChild(titleDiv);
-	container.appendChild(buttonsContainer);
-	parent.appendChild(container);
-	return buttonsContainer;
+	dropdownContainer.appendChild(toggleButton);
+	dropdownContainer.appendChild(menu);
+	parent.appendChild(dropdownContainer);
+	return menu;
 };
-const baseLayerButtonsContainer = createCategoryContainer('Camadas Base', categoriesWrapper, true);
-const fireButtonsContainer = createCategoryContainer('Incêndios', categoriesWrapper, true);
-const satelliteButtonsContainer = createCategoryContainer('Satélite', categoriesWrapper, true);
-const riskButtonsContainer = createCategoryContainer('Risco de Incêndio', categoriesWrapper, true);
-const weatherButtonsContainer = createCategoryContainer('Meteorologia', categoriesWrapper, true);
-const dayNightButtonsContainer = createCategoryContainer('Ciclo Dia/Noite', categoriesWrapper, true);
+
+function initializeLayerBar() {
+	const layerBar = document.getElementById('layer-bar');
+	if (!layerBar) return;
+	baseLayerButtonsContainer = createCategoryDropdown('Camadas Base', layerBar);
+	fireButtonsContainer = createCategoryDropdown('Incêndios', layerBar);
+	satelliteButtonsContainer = createCategoryDropdown('Satélite', layerBar);
+	riskButtonsContainer = createCategoryDropdown('Risco de Incêndio', layerBar);
+	weatherButtonsContainer = createCategoryDropdown('Meteorologia', layerBar);
+	dayNightButtonsContainer = createCategoryDropdown('Ciclo Dia/Noite', layerBar);
+	window.addEventListener('click', () => {
+		document.querySelectorAll('.layer-dropdown.open').forEach(d => d.classList.remove('open'));
+	});
+}
 
 function updateBaseLayerButtonState(activeLayerName) {
 	for (const layerName in baseLayerButtons) {
@@ -345,6 +346,8 @@ function updateBaseLayerButtonState(activeLayerName) {
 }
 
 function setupBaseLayerButtons() {
+	if (!baseLayerButtonsContainer) return;
+	baseLayerButtonsContainer.innerHTML = '';
 	for (const layerName in baseLayersConfig) {
 		const button = document.createElement('button');
 		button.innerHTML = `<img src='img/map.png' alt='map icon'> ${layerName}`;
@@ -352,7 +355,7 @@ function setupBaseLayerButtons() {
 			const {
 				layer, style, theme
 			} = baseLayersConfig[layerName];
-			const previousActiveLayer = document.querySelector('.overlay-buttons-container button.active');
+			const previousActiveLayer = document.querySelector('.dropdown-menu button.active');
 			const previousActiveLayerName = previousActiveLayer ? previousActiveLayer.textContent.split('-')[0].trim() : '';
 			const newActiveLayerName = layerName.split('-')[0].trim();
 			const isStandardStyle = layer.includes('mapbox/standard');
@@ -402,14 +405,11 @@ function setupBaseLayerButtons() {
 
 const overlayButtons = {};
 
-function setupCustomLayerControls() {
-	map.addControl({
-		onAdd: () => customLayerControl, onRemove: () => customLayerControl.parentNode.removeChild(customLayerControl)
-	}, 'top-right');
-}
-
 function rebuildOverlayControls() {
-	[fireButtonsContainer, satelliteButtonsContainer, riskButtonsContainer, weatherButtonsContainer, dayNightButtonsContainer].forEach(container => container.innerHTML = '');
+	const containers = [fireButtonsContainer, satelliteButtonsContainer, riskButtonsContainer, weatherButtonsContainer, dayNightButtonsContainer];
+	containers.forEach(container => {
+		if (container) container.innerHTML = '';
+	});
 	for (const key in overlayButtons) {
 		delete overlayButtons[key];
 	}
@@ -494,7 +494,9 @@ function rebuildOverlayControls() {
 		}, {
 			passive: true
 		});
-		const appendButton = (container) => container.appendChild(button);
+		const appendButton = (container) => {
+			if (container) container.appendChild(button);
+		};
 		if (layerConfig.category === 'fire-status') {
 			appendButton(fireButtonsContainer);
 		} else if (layerConfig.category === 'satellite') {
@@ -654,7 +656,7 @@ function reapplyOverlayLayers() {
 				}
 				addRiskLegend();
 			} else if (layerConfig.category === 'weather') {
-				const weatherKey = weatherLayerMapping[layerKey.replace('Meteorologia - ', '')];
+				const weatherKey = weatherLayerMapping[layerKey];
 				const sourceId = `weather-${weatherKey}-source`;
 				const layerId = `weather-${weatherKey}`;
 				if (!map.getSource(sourceId)) {
@@ -774,7 +776,7 @@ function addFireMarker(fire, mapInstance) {
 		el.innerHTML = `<i class='${iconClass}' id='fire-${fireId}'></i>`;
 		el.style.width = `${BASE_FIRE_SIZE}px`;
 		el.style.height = `${BASE_FIRE_SIZE}px`;
-		const layerKey = `Incêndios - ${Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode)}`;
+		const layerKey = Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode);
 		if (overlayLayers[layerKey] && !overlayLayers[layerKey].active) {
 			el.style.display = 'none';
 		}
@@ -1053,7 +1055,6 @@ async function loadWeatherLegendsData() {
 window.onload = async () => {
 	initializeOverlayLayers();
 	initializeMap();
-	setupBaseLayerButtons();
 	await loadWeatherLegendsData();
 	setupWorker();
 	await currentWorker.postMessage({
