@@ -88,7 +88,7 @@ let baseLayerButtonsContainer, fireButtonsContainer, satelliteButtonsContainer, 
 function initializeOverlayLayers() {
 	for (const statusName in fireStatusLayers) {
 		const statusConfig = fireStatusLayers[statusName];
-		overlayLayers[`Incêndios - ${statusName}`] = {
+		overlayLayers[statusName] = {
 			id: `fires-status-${statusConfig.statusCode}-layer`, type: 'symbol', source: `fires-status-${statusConfig.statusCode}-data`, icon: statusConfig.icon, active: statusConfig.defaultActive, category: 'fire-status', statusCode: statusConfig.statusCode, sourceData: []
 		};
 	}
@@ -96,7 +96,7 @@ function initializeOverlayLayers() {
 		const weatherKey = weatherLayerMapping[layerName];
 		const sourceId = `weather-${weatherKey}-source`;
 		const layerId = `weather-${weatherKey}`;
-		overlayLayers[`Meteorologia - ${layerName}`] = {
+		overlayLayers[layerName] = {
 			id: layerId, type: 'raster', source: sourceId, icon: 'img/weather.png', legend: weatherKey, active: false, category: 'weather'
 		};
 	}
@@ -667,7 +667,7 @@ function reapplyOverlayLayers() {
 				}
 				addRiskLegend();
 			} else if (layerConfig.category === 'weather') {
-				const weatherKey = weatherLayerMapping[layerKey.replace('Meteorologia - ', '')];
+				const weatherKey = weatherLayerMapping[layerKey];
 				const sourceId = `weather-${weatherKey}-source`;
 				const layerId = `weather-${weatherKey}`;
 				if (!map.getSource(sourceId)) {
@@ -785,7 +785,7 @@ function addFireMarker(fire, mapInstance) {
 		el.innerHTML = `<i class='${iconClass}' id='fire-${fireId}'></i>`;
 		el.style.width = `${BASE_FIRE_SIZE}px`;
 		el.style.height = `${BASE_FIRE_SIZE}px`;
-		const layerKey = `Incêndios - ${Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode)}`;
+		const layerKey = Object.keys(fireStatusLayers).find(key => fireStatusLayers[key].statusCode === statusCode);
 		if (overlayLayers[layerKey] && !overlayLayers[layerKey].active) {
 			el.style.display = 'none';
 		}
