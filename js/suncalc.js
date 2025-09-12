@@ -269,7 +269,7 @@ class SPA {
 	}
 
 	calculate_eot_and_sun_rise_transit_set(spa) {
-		const sun_rts = {...spa};
+		const sun_rts = { ...spa };
 		let m = this.sun_mean_longitude(spa.jme);
 		spa.eot = this.eot(m, spa.alpha, spa.del_psi, spa.epsilon);
 		sun_rts.hour = sun_rts.minute = sun_rts.second = sun_rts.delta_ut1 = sun_rts.timezone = 0;
@@ -365,7 +365,7 @@ class SPA {
 			sum_psi += (PE_TERMS[i][0] + jce * PE_TERMS[i][1]) * Math.sin(xy_term_sum);
 			sum_epsilon += (PE_TERMS[i][2] + jce * PE_TERMS[i][3]) * Math.cos(xy_term_sum);
 		}
-		return {del_psi: sum_psi / 36000000, del_epsilon: sum_epsilon / 36000000};
+		return { del_psi: sum_psi / 36000000, del_epsilon: sum_epsilon / 36000000 };
 	}
 
 	ecliptic_mean_obliquity(jme) {
@@ -404,7 +404,7 @@ class SPA {
 		const x = Math.cos(u) + elevation * Math.cos(lat_rad) / 6378140;
 		const delta_alpha_rad = Math.atan2(-x * Math.sin(xi_rad) * Math.sin(h_rad), Math.cos(delta_rad) - x * Math.sin(xi_rad) * Math.cos(h_rad));
 		const delta_prime = this.rad2deg(Math.atan2((Math.sin(delta_rad) - y * Math.sin(xi_rad)) * Math.cos(delta_alpha_rad), Math.cos(delta_rad) - x * Math.sin(xi_rad) * Math.cos(h_rad)));
-		return {delta_alpha: this.rad2deg(delta_alpha_rad), delta_prime: delta_prime};
+		return { delta_alpha: this.rad2deg(delta_alpha_rad), delta_prime: delta_prime };
 	}
 
 	sun_mean_longitude(jme) {
