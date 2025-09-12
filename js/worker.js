@@ -175,10 +175,19 @@ async function handleFiresData() {
 		});
 	}
 	const statusMap = {
-		'Despacho de 1.º Alerta': 4, 'Chegada ao TO': 6, 'Em Curso': 5, 'Em Resolução': 7, 'Em Conclusão': 8, Vigilância: 9, Encerrada: 10, 'Falso Alarme': 11, 'Falso Alerta': 12, Despacho: 3, Conclusão: 8
+		'Despacho': 3,
+		'Despacho de 1.º Alerta': 4,
+		'Em Curso': 5,
+		'Chegada ao TO': 6,
+		'Em Resolução': 7,
+		'Conclusão': 8,
+		'Vigilância': 9,
+		'Encerrada': 10,
+		'Falso Alarme': 11,
+		'Falso Alerta': 12,
 	};
 	const processedFires = data.features.map(({ properties: p }) => ({
-		id: p.Numero, lat: p.Latitude, lng: p.Longitude, statusCode: statusMap[p.EstadoOcorrencia] || 0, man: p.Operacionais, aerial: p.NumeroMeiosAereosEnvolvidos, terrain: p.NumeroMeiosTerrestresEnvolvidos, location: `${p.Concelho}, ${p.Freguesia}, ${p.Localidade}`, natureza: p.Natureza, status: p.EstadoOcorrencia, startDate: new Date(p.DataInicioOcorrencia).toLocaleString(), updated: new Date(p.DataDosDados).toLocaleString(), important: p.NumeroMeiosAereosEnvolvidos > 0 || p.Operacionais > 50
+		id: p.Numero, lat: p.Latitude, lng: p.Longitude, statusCode: statusMap[p.EstadoOcorrencia] || 0, man: p.Operacionais, aerial: p.NumeroMeiosAereosEnvolvidos, terrain: p.NumeroMeiosTerrestresEnvolvidos, location: `${p.Concelho}, ${p.Freguesia}, ${p.Localidade}`, natureza: p.Natureza, status: p.EstadoOcorrencia, startDate: new Date(p.DataInicioOcorrencia).toLocaleString(), updated: new Date(p.DataDosDados).toLocaleString(), important: (['Em Curso'].includes(p.EstadoOcorrencia) && (p.NumeroMeiosAereosEnvolvidos > 0 || p.Operacionais > 50))
 	}));
 	self.postMessage({
 		type: 'firesResult', data: processedFires

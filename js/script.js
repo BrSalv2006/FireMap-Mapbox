@@ -112,7 +112,13 @@ function showErrorMessage(message) {
 
 function initializeMap() {
 	map = new mapboxgl.Map({
-		container: 'map', style: baseLayersConfig['Standard - Default - Day'].layer, projection: 'globe', zoom: 6, center: [-7.8536599, 39.557191]
+		container: 'map',
+		style: baseLayersConfig['Standard - Default - Day'].layer,
+		projection: 'globe',
+		center: [-7.8536599, 39.557191],
+		pitch: 0,
+		bearing: 0,
+		zoom: 6
 	});
 	map.addControl(new mapboxgl.NavigationControl(), 'top-left');
 	map.addControl(new mapboxgl.GeolocateControl({
@@ -120,7 +126,7 @@ function initializeMap() {
 			enableHighAccuracy: true
 		}, trackUserLocation: true, showUserHeading: true
 	}), 'top-left');
-	map.on('style.load', () => {
+	map.once('style.load', () => {
 		map.setTerrain({
 			'exaggeration': 1
 		});
@@ -151,7 +157,10 @@ function hideSidebar() {
 	document.body.classList.remove('sidebar-open');
 	document.querySelector('.sidebar').classList.remove('active');
 	map.flyTo({
-		center: [-7.8536599, 39.557191], zoom: 6
+		center: [-7.8536599, 39.557191],
+		pitch: 0,
+		bearing: 0,
+		zoom: 6
 	});
 }
 
@@ -374,6 +383,12 @@ function setupBaseLayerButtons() {
 					if (overlayLayers['Ciclo Dia/Noite'].active) {
 						updateDayNightLayer();
 					}
+					map.on('style.load', () => {
+						map.setTerrain({
+							'source': 'mapbox-dem',
+							'exaggeration': 1
+						});
+					});
 				});
 			}
 			updateBaseLayerButtonState(layerName);
