@@ -135,7 +135,7 @@ async function handleRiskData() {
 		});
 	}
 
-	const riskUrl = 'https://www.ipma.pt/en/riscoincendio/rcm.pt/';
+	const riskUrl = 'https://corsproxy.io/?url=https://www.ipma.pt/en/riscoincendio/rcm.pt/';
 	const riskLayers = {};
 	let response = await fetch(riskUrl);
 	let text = await response.text();
