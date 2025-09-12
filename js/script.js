@@ -936,12 +936,7 @@ function setupWorker() {
 			loader.innerText = message;
 		} else if (type === 'initDataComplete') {
 			loader.innerText = 'Dados geográficos carregados. A obter dados de incêndios e risco...';
-			currentWorker.postMessage({
-				type: 'satelliteData', dayRange: 1
-			});
-			currentWorker.postMessage({
-				type: 'riskData'
-			});
+			fetchAndApplyDynamicLayers();
 		} else if (type === 'satelliteResult') {
 			overlayLayers['MODIS'].hotspotData = {
 				type: 'FeatureCollection', features: data.modis?.points || []
@@ -1046,7 +1041,7 @@ window.onload = async () => {
 	setupBaseLayerButtons();
 	await loadWeatherLegendsData();
 	setupWorker();
-	currentWorker.postMessage({
+	await currentWorker.postMessage({
 		type: 'initData', url: window.location.href.split('?')[0]
 	});
 };

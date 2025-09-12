@@ -76,7 +76,7 @@ async function handleInitData({
 	self.postMessage({
 		type: 'progress', message: 'A carregar dados geográficos...'
 	});
-	[workerPortugalGeometry, workerConcelhosGeoJSON] = await Promise.all([fetchWithRetry(`${url}/json/portugal.json`), fetchWithRetry(`${url}/json/concelhos.json`)]);
+	[workerPortugalGeometry, workerConcelhosGeoJSON] = await Promise.all([fetchWithRetry(`${url}json/portugal.json`), fetchWithRetry(`${url}json/concelhos.json`)]);
 	self.postMessage({
 		type: 'initDataComplete'
 	});
