@@ -306,7 +306,7 @@ const createCategoryDropdown = (title, parent) => {
 	dropdownContainer.className = 'layer-dropdown';
 
 	const toggleButton = document.createElement('button');
-	toggleButton.className = 'dropdown-toggle';
+	toggleButton.className = 'dropdown-toggle dropdown-toggle-button';
 	toggleButton.innerHTML = `${title}`;
 
 	const menu = document.createElement('div');
@@ -314,6 +314,10 @@ const createCategoryDropdown = (title, parent) => {
 
 	if (isMobile) {
 		document.body.appendChild(menu);
+		map.on('click', () => {
+			menu.classList.remove('open');
+			toggleButton.classList.remove('active');
+		});
 	} else {
 		dropdownContainer.appendChild(menu);
 	}
@@ -324,7 +328,7 @@ const createCategoryDropdown = (title, parent) => {
 		if (isMobile) {
 			const isOpen = menu.classList.contains('open');
 			document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open'));
-			document.querySelectorAll('.dropdown-toggle.active').forEach(t => t.classList.remove('active'));
+			document.querySelectorAll('.dropdown-toggle-button.active').forEach(t => t.classList.remove('active'));
 
 			if (!isOpen) {
 				menu.classList.add('open');
@@ -789,7 +793,7 @@ function addFireMarker(fire, mapInstance) {
 
 			if (isMobile) {
 				mapInstance.flyTo({
-					center: [lng, lat-0.25], zoom: 9
+					center: [lng, lat - 0.25], zoom: 9
 				});
 			} else {
 				mapInstance.flyTo({
@@ -823,7 +827,7 @@ function addFireMarker(fire, mapInstance) {
 			activeIcon.classList.add('dot-active');
 			if (isMobile) {
 				mapInstance.flyTo({
-					center: [lng, lat-0.25], zoom: 9
+					center: [lng, lat - 0.25], zoom: 9
 				});
 			} else {
 				mapInstance.flyTo({
