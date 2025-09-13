@@ -219,7 +219,7 @@ function createSatelliteLayers(satelliteData, type) {
 		const p = e.features[0].properties;
 		const popupContent = `<b>Brilho:</b> ${p.brightness}K<br><b>Data, Hora:</b> ${p.acq_date}<br><b>Satélite:</b> ${p.satellite}<br><b>Confiança:</b> ${p.confidence}<br><b>Dia/Noite:</b> ${p.daynight}<br><b>PRF:</b> ${p.frp}MW`;
 		map.flyTo({
-			center: e.lngLat, zoom: 12
+			center: e.features[0].geometry.coordinates, zoom: 12
 		});
 		new mapboxgl.Popup().setLngLat(e.features[0].geometry.coordinates).setHTML(popupContent).addTo(map);
 	});
