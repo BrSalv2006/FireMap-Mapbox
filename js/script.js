@@ -442,9 +442,9 @@ function rebuildOverlayControls() {
 			}
 			if (['day-night'].includes(category)) {
 				if (button.classList.contains('active')) {
-					button.classList.remove('active')
+					button.classList.remove('active');
 				} else {
-					button.classList.add('active')
+					button.classList.add('active');
 				}
 			}
 
@@ -524,21 +524,11 @@ function rebuildOverlayControls() {
 }
 
 function calculateDayNightPolygon() {
-	const date = new Date();
-	const SunCalc = new sunCalc();
-	SunCalc.data.year = date.getUTCFullYear();
-	SunCalc.data.month = date.getUTCMonth() + 1;
-	SunCalc.data.day = date.getUTCDate();
-	SunCalc.data.hour = date.getUTCHours();
-	SunCalc.data.minute = date.getUTCMinutes();
-	SunCalc.data.second = date.getUTCSeconds();
-	SunCalc.data.timezone = 0;
-	SunCalc.data.longitude = 0;
-	SunCalc.data.latitude = 0;
-	SunCalc.calculate();
+	const sunCalcInstance = new sunCalc();
+	sunCalcInstance.calculate();
 
 	function latitude(lng) {
-		return SunCalc.rad2deg(Math.atan(-Math.cos(SunCalc.deg2rad(SunCalc.observer_hour_angle(SunCalc.data.nu, lng, SunCalc.data.alpha))) / Math.tan(SunCalc.deg2rad(SunCalc.data.delta))));
+		return sunCalcInstance.rad2deg(Math.atan(-Math.cos(sunCalcInstance.deg2rad(sunCalcInstance.observer_hour_angle(sunCalcInstance.data.nu, lng, sunCalcInstance.data.alpha))) / Math.tan(sunCalcInstance.deg2rad(sunCalcInstance.data.delta))));
 	}
 
 	let latLngs = [];
@@ -548,7 +538,7 @@ function calculateDayNightPolygon() {
 		let lat = latitude(lng);
 		latLngs[i + 1] = [lat, lng];
 	}
-	if (SunCalc.data.delta < 0) {
+	if (sunCalcInstance.data.delta < 0) {
 		latLngs[0] = [90, startMinus];
 		latLngs[latLngs.length] = [90, 180];
 	} else {

@@ -1,13 +1,9 @@
 class sunCalc {
-	constructor() {
+	constructor(date = new Date(), latitude = 0, longitude = 0) {
 		this.PI = 3.1415926535897932384626433832795028841971;
 		this.SUN_RADIUS = 0.26667;
-		this.SC_ZA = 0;
-		this.SC_ZA_INC = 1;
-		this.SC_ZA_RTS = 2;
-		this.SC_ALL = 3;
 		this.data = {
-			year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0, delta_ut1: 0, delta_t: 0, timezone: 0, longitude: 0, latitude: 0, elevation: 0, pressure: 0, temperature: 0, slope: 0, azm_rotation: 0, atmos_refract: 0, function: this.SC_ALL, jd: 0, jc: 0, jde: 0, jce: 0, jme: 0, l: 0, b: 0, r: 0, theta: 0, beta: 0, x0: 0, x1: 0, x2: 0, x3: 0, x4: 0, del_psi: 0, del_epsilon: 0, epsilon0: 0, epsilon: 0, del_tau: 0, lamda: 0, nu0: 0, nu: 0, alpha: 0, delta: 0, h: 0, xi: 0, del_alpha: 0, delta_prime: 0, alpha_prime: 0, h_prime: 0, e0: 0, del_e: 0, e: 0, eot: 0, srha: 0, ssha: 0, sta: 0, zenith: 0, azimuth_astro: 0, azimuth: 0, incidence: 0, suntransit: 0, sunrise: 0, sunset: 0
+			year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(), hour: date.getUTCHours(), minute: date.getUTCMinutes(), second: date.getUTCSeconds(), delta_ut1: 0, delta_t: 0, timezone: 0, longitude: longitude, latitude: latitude, elevation: 0, pressure: 0, temperature: 0, slope: 0, azm_rotation: 0, atmos_refract: 0, jd: 0, jc: 0, jde: 0, jce: 0, jme: 0, l: 0, b: 0, r: 0, theta: 0, beta: 0, x0: 0, x1: 0, x2: 0, x3: 0, x4: 0, del_psi: 0, del_epsilon: 0, epsilon0: 0, epsilon: 0, del_tau: 0, lamda: 0, nu0: 0, nu: 0, alpha: 0, delta: 0, h: 0, xi: 0, del_alpha: 0, delta_prime: 0, alpha_prime: 0, h_prime: 0, e0: 0, del_e: 0, e: 0, eot: 0, srha: 0, ssha: 0, sta: 0, zenith: 0, azimuth_astro: 0, azimuth: 0, incidence: 0, suntransit: 0, sunrise: 0, sunset: 0
 		};
 	}
 
@@ -96,85 +92,80 @@ class sunCalc {
 	}
 
 	calculate() {
-		const sc = this.data;
-		if (this.validate_inputs(sc) !== 0) return;
-		sc.jd = this.julian_day(sc.year, sc.month, sc.day, sc.hour, sc.minute, sc.second, sc.delta_ut1, sc.timezone);
-		this.calculate_geocentric_sun_right_ascension_and_declination(sc);
-		sc.h = this.observer_hour_angle(sc.nu, sc.longitude, sc.alpha);
-		sc.xi = this.sun_equatorial_horizontal_parallax(sc.r);
-		const parallax = this.right_ascension_parallax_and_topocentric_dec(sc.latitude, sc.elevation, sc.xi, sc.h, sc.delta);
-		sc.del_alpha = parallax.delta_alpha;
-		sc.delta_prime = parallax.delta_prime;
-		sc.alpha_prime = this.topocentric_right_ascension(sc.alpha, sc.del_alpha);
-		sc.h_prime = this.topocentric_local_hour_angle(sc.h, sc.del_alpha);
-		sc.e0 = this.topocentric_elevation_angle(sc.latitude, sc.delta_prime, sc.h_prime);
-		sc.del_e = this.atmospheric_refraction_correction(sc.pressure, sc.temperature, sc.atmos_refract, sc.e0);
-		sc.e = this.topocentric_elevation_angle_corrected(sc.e0, sc.del_e);
-		sc.zenith = this.topocentric_zenith_angle(sc.e);
-		sc.azimuth_astro = this.topocentric_azimuth_angle_astro(sc.h_prime, sc.latitude, sc.delta_prime);
-		sc.azimuth = this.topocentric_azimuth_angle(sc.azimuth_astro);
-		if (sc.function === this.SC_ZA_INC || sc.function === this.SC_ALL) {
-			sc.incidence = this.surface_incidence_angle(sc.zenith, sc.azimuth_astro, sc.azm_rotation, sc.slope);
-		}
-		if (sc.function === this.SC_ZA_RTS || sc.function === this.SC_ALL) {
-			this.calculate_eot_and_sun_rise_transit_set(sc);
-		}
+		if (this.validate_inputs(this.data)) return;
+		this.data.jd = this.julian_day(this.data.year, this.data.month, this.data.day, this.data.hour, this.data.minute, this.data.second, this.data.delta_ut1, this.data.timezone);
+		this.calculate_geocentric_sun_right_ascension_and_declination(this.data);
+		this.data.h = this.observer_hour_angle(this.data.nu, this.data.longitude, this.data.alpha);
+		this.data.xi = this.sun_equatorial_horizontal_parallax(this.data.r);
+		const parallax = this.right_ascension_parallax_and_topocentric_dec(this.data.latitude, this.data.elevation, this.data.xi, this.data.h, this.data.delta);
+		this.data.del_alpha = parallax.delta_alpha;
+		this.data.delta_prime = parallax.delta_prime;
+		this.data.alpha_prime = this.topocentric_right_ascension(this.data.alpha, this.data.del_alpha);
+		this.data.h_prime = this.topocentric_local_hour_angle(this.data.h, this.data.del_alpha);
+		this.data.e0 = this.topocentric_elevation_angle(this.data.latitude, this.data.delta_prime, this.data.h_prime);
+		this.data.del_e = this.atmospheric_refraction_correction(this.data.pressure, this.data.temperature, this.data.atmos_refract, this.data.e0);
+		this.data.e = this.topocentric_elevation_angle_corrected(this.data.e0, this.data.del_e);
+		this.data.zenith = this.topocentric_zenith_angle(this.data.e);
+		this.data.azimuth_astro = this.topocentric_azimuth_angle_astro(this.data.h_prime, this.data.latitude, this.data.delta_prime);
+		this.data.azimuth = this.topocentric_azimuth_angle(this.data.azimuth_astro);
+		this.data.incidence = this.surface_incidence_angle(this.data.zenith, this.data.azimuth_astro, this.data.azm_rotation, this.data.slope);
+		this.calculate_eot_and_sun_rise_transit_set(this.data);
 	}
 
-	validate_inputs(sc) {
-		if (sc.year < -2000 || sc.year > 6000) return 1;
-		if (sc.month < 1 || sc.month > 12) return 2;
-		if (sc.day < 1 || sc.day > 31) return 3;
-		if (sc.hour < 0 || sc.hour > 24) return 4;
-		if (sc.minute < 0 || sc.minute > 59) return 5;
-		if (sc.second < 0 || sc.second >= 60) return 6;
-		if (sc.pressure < 0 || sc.pressure > 5000) return 12;
-		if (sc.temperature <= -273 || sc.temperature > 6000) return 13;
-		if (sc.delta_ut1 <= -1 || sc.delta_ut1 >= 1) return 17;
-		if (sc.hour === 24 && (sc.minute > 0 || sc.second > 0)) return 4;
-		if (Math.abs(sc.delta_t) > 8000) return 7;
-		if (Math.abs(sc.timezone) > 18) return 8;
-		if (Math.abs(sc.longitude) > 180) return 9;
-		if (Math.abs(sc.latitude) > 90) return 10;
-		if (Math.abs(sc.atmos_refract) > 5) return 16;
-		if (sc.elevation < -6500000) return 11;
-		if ((sc.function === this.SC_ZA_INC || sc.function === this.SC_ALL) && (Math.abs(sc.slope) > 360 || Math.abs(sc.azm_rotation) > 360)) return 14;
-		return 0;
+	validate_inputs(data) {
+		if (data.year < -2000 || data.year > 6000) return false;
+		if (data.month < 1 || data.month > 12) return false;
+		if (data.day < 1 || data.day > 31) return false;
+		if (data.hour < 0 || data.hour > 24) return false;
+		if (data.minute < 0 || data.minute > 59) return false;
+		if (data.second < 0 || data.second >= 60) return false;
+		if (data.pressure < 0 || data.pressure > 5000) return false;
+		if (data.temperature <= -273 || data.temperature > 6000) return false;
+		if (data.delta_ut1 <= -1 || data.delta_ut1 >= 1) return false;
+		if (data.hour === 24 && (data.minute > 0 || data.second > 0)) return false;
+		if (Math.abs(data.delta_t) > 8000) return false;
+		if (Math.abs(data.timezone) > 18) return false;
+		if (Math.abs(data.longitude) > 180) return false;
+		if (Math.abs(data.latitude) > 90) return false;
+		if (Math.abs(data.atmos_refract) > 5) return false;
+		if (data.elevation < -6500000) return false;
+		if (Math.abs(data.slope) > 360 || Math.abs(data.azm_rotation) > 360) return false;
+		return true;
 	}
 
-	calculate_geocentric_sun_right_ascension_and_declination(sc) {
+	calculate_geocentric_sun_right_ascension_and_declination(data) {
 		const x = new Array(5);
-		sc.jc = this.julian_century(sc.jd);
-		sc.jde = this.julian_ephemeris_day(sc.jd, sc.delta_t);
-		sc.jce = this.julian_ephemeris_century(sc.jde);
-		sc.jme = this.julian_ephemeris_millennium(sc.jce);
-		sc.l = this.earth_heliocentric_longitude(sc.jme);
-		sc.b = this.earth_heliocentric_latitude(sc.jme);
-		sc.r = this.earth_radius_vector(sc.jme);
-		sc.theta = this.geocentric_longitude(sc.l);
-		sc.beta = this.geocentric_latitude(sc.b);
-		x[0] = sc.x0 = this.mean_elongation_moon_sun(sc.jce);
-		x[1] = sc.x1 = this.mean_anomaly_sun(sc.jce);
-		x[2] = sc.x2 = this.mean_anomaly_moon(sc.jce);
-		x[3] = sc.x3 = this.argument_latitude_moon(sc.jce);
-		x[4] = sc.x4 = this.ascending_longitude_moon(sc.jce);
-		const nutation = this.nutation_longitude_and_obliquity(sc.jce, x);
-		sc.del_psi = nutation.del_psi;
-		sc.del_epsilon = nutation.del_epsilon;
-		sc.epsilon0 = this.ecliptic_mean_obliquity(sc.jme);
-		sc.epsilon = this.ecliptic_true_obliquity(sc.del_epsilon, sc.epsilon0);
-		sc.del_tau = this.aberration_correction(sc.r);
-		sc.lamda = this.apparent_sun_longitude(sc.theta, sc.del_psi, sc.del_tau);
-		sc.nu0 = this.greenwich_mean_sidereal_time(sc.jd, sc.jc);
-		sc.nu = this.greenwich_sidereal_time(sc.nu0, sc.del_psi, sc.epsilon);
-		sc.alpha = this.geocentric_right_ascension(sc.lamda, sc.epsilon, sc.beta);
-		sc.delta = this.geocentric_declination(sc.beta, sc.epsilon, sc.lamda);
+		data.jc = this.julian_century(data.jd);
+		data.jde = this.julian_ephemeris_day(data.jd, data.delta_t);
+		data.jce = this.julian_ephemeris_century(data.jde);
+		data.jme = this.julian_ephemeris_millennium(data.jce);
+		data.l = this.earth_heliocentric_longitude(data.jme);
+		data.b = this.earth_heliocentric_latitude(data.jme);
+		data.r = this.earth_radius_vector(data.jme);
+		data.theta = this.geocentric_longitude(data.l);
+		data.beta = this.geocentric_latitude(data.b);
+		x[0] = data.x0 = this.mean_elongation_moon_sun(data.jce);
+		x[1] = data.x1 = this.mean_anomaly_sun(data.jce);
+		x[2] = data.x2 = this.mean_anomaly_moon(data.jce);
+		x[3] = data.x3 = this.argument_latitude_moon(data.jce);
+		x[4] = data.x4 = this.ascending_longitude_moon(data.jce);
+		const nutation = this.nutation_longitude_and_obliquity(data.jce, x);
+		data.del_psi = nutation.del_psi;
+		data.del_epsilon = nutation.del_epsilon;
+		data.epsilon0 = this.ecliptic_mean_obliquity(data.jme);
+		data.epsilon = this.ecliptic_true_obliquity(data.del_epsilon, data.epsilon0);
+		data.del_tau = this.aberration_correction(data.r);
+		data.lamda = this.apparent_sun_longitude(data.theta, data.del_psi, data.del_tau);
+		data.nu0 = this.greenwich_mean_sidereal_time(data.jd, data.jc);
+		data.nu = this.greenwich_sidereal_time(data.nu0, data.del_psi, data.epsilon);
+		data.alpha = this.geocentric_right_ascension(data.lamda, data.epsilon, data.beta);
+		data.delta = this.geocentric_declination(data.beta, data.epsilon, data.lamda);
 	}
 
-	calculate_eot_and_sun_rise_transit_set(sc) {
-		const sun_rts = { ...sc };
-		let m = this.sun_mean_longitude(sc.jme);
-		sc.eot = this.eot(m, sc.alpha, sc.del_psi, sc.epsilon);
+	calculate_eot_and_sun_rise_transit_set(data) {
+		const sun_rts = { ...data };
+		let m = this.sun_mean_longitude(data.jme);
+		data.eot = this.eot(m, data.alpha, data.del_psi, data.epsilon);
 		sun_rts.hour = sun_rts.minute = sun_rts.second = sun_rts.delta_ut1 = sun_rts.timezone = 0;
 		sun_rts.jd = this.julian_day(sun_rts.year, sun_rts.month, sun_rts.day, sun_rts.hour, sun_rts.minute, sun_rts.second, sun_rts.delta_ut1, sun_rts.timezone);
 		this.calculate_geocentric_sun_right_ascension_and_declination(sun_rts);
@@ -189,9 +180,9 @@ class sunCalc {
 			sun_rts.jd++;
 		}
 		const m_rts = [];
-		m_rts[0] = this.approx_sun_transit_time(alpha[1], sc.longitude, nu);
-		const h0_prime = -1 * (this.SUN_RADIUS + sc.atmos_refract);
-		let h0 = this.sun_hour_angle_at_rise_set(sc.latitude, delta[1], h0_prime);
+		m_rts[0] = this.approx_sun_transit_time(alpha[1], data.longitude, nu);
+		const h0_prime = -1 * (this.SUN_RADIUS + data.atmos_refract);
+		let h0 = this.sun_hour_angle_at_rise_set(data.latitude, delta[1], h0_prime);
 		if (h0 >= 0) {
 			const rts_results = this.approx_sun_rise_and_set(m_rts[0], h0);
 			m_rts[1] = rts_results.sunrise;
@@ -200,20 +191,20 @@ class sunCalc {
 			const nu_rts = [], h_rts = [], alpha_prime = [], delta_prime = [], h_prime = [];
 			for (let i = 0; i < 3; i++) {
 				nu_rts[i] = nu + 360.985647 * m_rts[i];
-				let n = m_rts[i] + sc.delta_t / 86400;
+				let n = m_rts[i] + data.delta_t / 86400;
 				alpha_prime[i] = this.rts_alpha_delta_prime(alpha, n);
 				delta_prime[i] = this.rts_alpha_delta_prime(delta, n);
-				h_prime[i] = this.limit_degrees180pm(nu_rts[i] + sc.longitude - alpha_prime[i]);
-				h_rts[i] = this.rts_sun_altitude(sc.latitude, delta_prime[i], h_prime[i]);
+				h_prime[i] = this.limit_degrees180pm(nu_rts[i] + data.longitude - alpha_prime[i]);
+				h_rts[i] = this.rts_sun_altitude(data.latitude, delta_prime[i], h_prime[i]);
 			}
-			sc.srha = h_prime[1];
-			sc.ssha = h_prime[2];
-			sc.sta = h_rts[0];
-			sc.suntransit = this.dayfrac_to_local_hr(m_rts[0] - h_prime[0] / 360, sc.timezone);
-			sc.sunrise = this.dayfrac_to_local_hr(this.sun_rise_and_set(m_rts, h_rts, delta_prime, sc.latitude, h_prime, h0_prime, 1), sc.timezone);
-			sc.sunset = this.dayfrac_to_local_hr(this.sun_rise_and_set(m_rts, h_rts, delta_prime, sc.latitude, h_prime, h0_prime, 2), sc.timezone);
+			data.srha = h_prime[1];
+			data.ssha = h_prime[2];
+			data.sta = h_rts[0];
+			data.suntransit = this.dayfrac_to_local_hr(m_rts[0] - h_prime[0] / 360, data.timezone);
+			data.sunrise = this.dayfrac_to_local_hr(this.sun_rise_and_set(m_rts, h_rts, delta_prime, data.latitude, h_prime, h0_prime, 1), data.timezone);
+			data.sunset = this.dayfrac_to_local_hr(this.sun_rise_and_set(m_rts, h_rts, delta_prime, data.latitude, h_prime, h0_prime, 2), data.timezone);
 		} else {
-			sc.srha = sc.ssha = sc.sta = sc.suntransit = sc.sunrise = sc.sunset = -99999;
+			data.srha = data.ssha = data.sta = data.suntransit = data.sunrise = data.sunset = -99999;
 		}
 	}
 
