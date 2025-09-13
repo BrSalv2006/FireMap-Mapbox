@@ -10,6 +10,7 @@ let satelliteDataProcessed = false;
 let riskDataProcessed = false;
 let allFireMarkersByStatus = {};
 let detailsChart = null;
+const isMobile = window.matchMedia("(max-width: 1024px)").matches;
 const BASE_FIRE_SIZE = 22;
 const WEATHER_API_APP_ID = '89ae8b33d0bde5d8a89a7f5550e87869';
 const weatherLayerMapping = {
@@ -310,8 +311,6 @@ const createCategoryDropdown = (title, parent) => {
 
 	const menu = document.createElement('div');
 	menu.className = 'dropdown-menu';
-
-	const isMobile = window.matchMedia("(max-width: 1024px)").matches;
 
 	if (isMobile) {
 		document.body.appendChild(menu);
@@ -787,9 +786,16 @@ function addFireMarker(fire, mapInstance) {
 		const isInitiallyActive = fireIdFromUrl === fireId.toString();
 		if (isInitiallyActive) {
 			iconClass += ' dot-active';
-			mapInstance.flyTo({
-				center: [lng, lat], zoom: 9
-			});
+
+			if (isMobile) {
+				mapInstance.flyTo({
+					center: [lng, lat-0.25], zoom: 9
+				});
+			} else {
+				mapInstance.flyTo({
+					center: [lng, lat], zoom: 9
+				});
+			}
 		}
 		const el = document.createElement('div');
 		el.className = 'fire-marker';
@@ -815,9 +821,15 @@ function addFireMarker(fire, mapInstance) {
 				previouslyActiveIcon.classList.remove('dot-active');
 			}
 			activeIcon.classList.add('dot-active');
-			mapInstance.flyTo({
-				center: [lng, lat], zoom: 9
-			});
+			if (isMobile) {
+				mapInstance.flyTo({
+					center: [lng, lat-0.25], zoom: 9
+				});
+			} else {
+				mapInstance.flyTo({
+					center: [lng, lat], zoom: 9
+				});
+			}
 			updateSidebarDetails(fire, lat, lng);
 			showSidebar();
 			window.history.pushState('fogo', '', `?fogo=${fireId}`);
