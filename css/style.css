@@ -3,7 +3,7 @@
 	--text-color: #333333;
 	--border-color: #E0E0E0;
 	--shadow-color: rgba(0, 0, 0, 0.1);
-	--button-bg: #007BFF;
+	--button-bg: #0054B3;
 	--button-hover-bg: #0056B3;
 	--loader-bg: rgba(255, 255, 255, 0.9);
 	--sidebar-width-desktop: 25%;
@@ -71,8 +71,8 @@ button.dropdown-toggle.active {
 }
 
 .dropdown-toggle img {
-	height: 18px !important;
-	width: 18px !important;
+	height: 18px;
+	width: 18px;
 	margin-right: 10px;
 }
 
@@ -121,7 +121,6 @@ button.dropdown-toggle.active {
 
 .dropdown-menu button:last-child {
 	margin-bottom: 0;
-	border-bottom: none;
 }
 
 .dropdown-menu button:hover:not(.active) {
@@ -184,11 +183,7 @@ button.dropdown-toggle.active {
 		transform: translateY(20px);
 	}
 
-	10% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-
+	10%,
 	90% {
 		opacity: 1;
 		transform: translateY(0);
@@ -240,11 +235,10 @@ button.dropdown-toggle.active {
 .card-title {
 	font-size: 1.4em;
 	font-weight: 700;
-	margin-bottom: 15px;
+	margin: 0 0 15px;
 	padding-bottom: 10px;
 	color: #2C3E50;
 	border-bottom: 1px solid var(--border-color);
-	margin-block-start: 0;
 }
 
 .f-local,
@@ -257,11 +251,8 @@ button.dropdown-toggle.active {
 .f-danger {
 	font-size: 1.05em;
 	line-height: 1.6;
-	margin-right: 1rem;
-	margin-bottom: 10px;
-	margin-left: 1rem;
+	margin: 0 1rem 10px;
 	color: var(--text-color);
-	margin-block-start: 0;
 }
 
 .assets {
@@ -276,7 +267,7 @@ button.dropdown-toggle.active {
 }
 
 .assets-icon {
-	width: 30px;
+	/*width: 30px;*/
 	height: 30px;
 	margin: 0 10px;
 }
@@ -387,17 +378,10 @@ canvas#fireChart {
 
 .dot.dotInfo,
 .dot.timelineDot {
-	display: flex;
 	float: left;
-	overflow: visible;
-	align-items: center;
-	justify-content: center;
 	width: 24px;
-	max-width: 100%;
 	height: 24px;
-	max-height: 100%;
 	margin-left: -13px;
-	border-radius: 50%;
 }
 
 .extra,
@@ -430,9 +414,8 @@ canvas#fireChart {
 	font-size: 0.95em;
 	position: absolute;
 	z-index: 1;
-	bottom: 0;
-	left: 0;
-	margin: 15px;
+	bottom: 15px;
+	left: 15px;
 	padding: 15px;
 	color: var(--text-color);
 	border: 1px solid var(--border-color);
@@ -452,12 +435,11 @@ canvas#fireChart {
 
 .mapbox-weather-legend-alone {
 	left: 15px;
-	max-width: 200px;
 }
 
 .mapbox-legend h4 {
 	font-size: 1.15em;
-	margin: 0 0 10px 0;
+	margin: 0 0 10px;
 	padding-bottom: 5px;
 	color: #2C3E50;
 	border-bottom: 1px solid var(--border-color);
@@ -505,16 +487,9 @@ canvas#fireChart {
 	}
 }
 
-.status-hour {
-	margin-left: 1em;
-	margin-block-start: 0%;
-	margin-block-end: 0%;
-}
-
+.status-hour,
 .status-label {
-	margin-left: 1em;
-	margin-block-start: 0%;
-	margin-block-end: 1em;
+	margin: 0 0 1em 1em;
 }
 
 #status {
@@ -523,11 +498,9 @@ canvas#fireChart {
 
 .fire-status {
 	margin: 0 0 1rem;
+	padding: 0;
 	text-transform: uppercase;
 	color: #FFFFFF;
-	padding-inline-start: 0px;
-	margin-block-start: 0%;
-	margin-block-end: 0%;
 }
 
 .fire-status li {

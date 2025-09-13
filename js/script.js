@@ -502,21 +502,21 @@ function rebuildOverlayControls() {
 			if (container) container.appendChild(button);
 		};
 		if (layerConfig.category === 'day-night') {
-			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 18w, ${iconSrc.replace(".png", "_27.png")} 27w' alt='layer icon'> ${layerKey}`;
 			button.className = 'dropdown-toggle';
 			button.classList.toggle('active', layerConfig.active);
 			layerBar.appendChild(button);
 		} else if (layerConfig.category === 'fire-status') {
-			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
 			appendButton(fireButtonsContainer);
 		} else if (layerConfig.category === 'satellite') {
-			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
 			appendButton(satelliteButtonsContainer);
 		} else if (layerConfig.category === 'risk') {
-			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
 			appendButton(riskButtonsContainer);
 		} else if (layerConfig.category === 'weather') {
-			button.innerHTML = `<img src='${iconSrc}' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
 			appendButton(weatherButtonsContainer);
 		}
 		overlayButtons[layerKey] = button;
@@ -525,20 +525,20 @@ function rebuildOverlayControls() {
 
 function calculateDayNightPolygon() {
 	const date = new Date();
-	const sunCalc = new SPA();
-	sunCalc.data.year = date.getUTCFullYear();
-	sunCalc.data.month = date.getUTCMonth() + 1;
-	sunCalc.data.day = date.getUTCDate();
-	sunCalc.data.hour = date.getUTCHours();
-	sunCalc.data.minute = date.getUTCMinutes();
-	sunCalc.data.second = date.getUTCSeconds();
-	sunCalc.data.timezone = 0;
-	sunCalc.data.longitude = 0;
-	sunCalc.data.latitude = 0;
-	sunCalc.calculate();
+	const SunCalc = new sunCalc();
+	SunCalc.data.year = date.getUTCFullYear();
+	SunCalc.data.month = date.getUTCMonth() + 1;
+	SunCalc.data.day = date.getUTCDate();
+	SunCalc.data.hour = date.getUTCHours();
+	SunCalc.data.minute = date.getUTCMinutes();
+	SunCalc.data.second = date.getUTCSeconds();
+	SunCalc.data.timezone = 0;
+	SunCalc.data.longitude = 0;
+	SunCalc.data.latitude = 0;
+	SunCalc.calculate();
 
 	function latitude(lng) {
-		return sunCalc.rad2deg(Math.atan(-Math.cos(sunCalc.deg2rad(sunCalc.observer_hour_angle(sunCalc.data.nu, lng, sunCalc.data.alpha))) / Math.tan(sunCalc.deg2rad(sunCalc.data.delta))));
+		return SunCalc.rad2deg(Math.atan(-Math.cos(SunCalc.deg2rad(SunCalc.observer_hour_angle(SunCalc.data.nu, lng, SunCalc.data.alpha))) / Math.tan(SunCalc.deg2rad(SunCalc.data.delta))));
 	}
 
 	let latLngs = [];
@@ -548,7 +548,7 @@ function calculateDayNightPolygon() {
 		let lat = latitude(lng);
 		latLngs[i + 1] = [lat, lng];
 	}
-	if (sunCalc.data.delta < 0) {
+	if (SunCalc.data.delta < 0) {
 		latLngs[0] = [90, startMinus];
 		latLngs[latLngs.length] = [90, 180];
 	} else {
@@ -898,11 +898,11 @@ async function fetchAndRender(url, selector, toggleClass = null) {
 		if (!response.ok) {
 			throw new Error(`HTTP error! status: ${response.status}`);
 		}
-		const data = await response.text();
+		let data = await response.text();
 		const element = document.querySelector(selector);
 		const parentRow = element ? element.closest('.card') : null;
 		if (data && (data.trim().length > 2)) {
-			element.innerHTML = data;
+			element.innerHTML = data.replace(/\s<img[\s\S]*\/>/, '');;
 			if (parentRow && toggleClass) {
 				parentRow.classList.add(toggleClass);
 			}
