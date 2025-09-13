@@ -545,11 +545,11 @@ function rebuildOverlayControls() {
 }
 
 function calculateDayNightPolygon() {
-	const sunCalcInstance = new sunCalc();
-	sunCalcInstance.calculate();
+	const SunCalc = new sunCalc();
+	SunCalc.calculate();
 
 	function latitude(lng) {
-		return sunCalcInstance.rad2deg(Math.atan(-Math.cos(sunCalcInstance.deg2rad(sunCalcInstance.observer_hour_angle(sunCalcInstance.data.nu, lng, sunCalcInstance.data.alpha))) / Math.tan(sunCalcInstance.deg2rad(sunCalcInstance.data.delta))));
+		return SunCalc.rad2deg(Math.atan(-Math.cos(SunCalc.deg2rad(SunCalc.observer_hour_angle(SunCalc.data.nu, lng, SunCalc.data.alpha))) / Math.tan(SunCalc.deg2rad(SunCalc.data.delta))));
 	}
 
 	let latLngs = [];
@@ -559,7 +559,7 @@ function calculateDayNightPolygon() {
 		let lat = latitude(lng);
 		latLngs[i + 1] = [lat, lng];
 	}
-	if (sunCalcInstance.data.delta < 0) {
+	if (SunCalc.data.delta < 0) {
 		latLngs[0] = [90, startMinus];
 		latLngs[latLngs.length] = [90, 180];
 	} else {

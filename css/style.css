@@ -503,8 +503,7 @@ canvas#fireChart {
 		transform: translateX(0%);
 		min-width: auto;
 		max-width: 90vw;
-		border-top-right-radius: 0px;
-		border-bottom-right-radius: 0px;
+		scrollbar-width: none;
 	}
 
 	.dropdown-menu.open {

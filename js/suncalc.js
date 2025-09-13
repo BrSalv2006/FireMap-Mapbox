@@ -3,7 +3,7 @@ class sunCalc {
 		this.PI = 3.1415926535897932384626433832795028841971;
 		this.SUN_RADIUS = 0.26667;
 		this.data = {
-			year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(), hour: date.getUTCHours(), minute: date.getUTCMinutes(), second: date.getUTCSeconds(), delta_ut1: 0, delta_t: 0, timezone: 0, longitude: longitude, latitude: latitude, elevation: 0, pressure: 0, temperature: 0, slope: 0, azm_rotation: 0, atmos_refract: 0, jd: 0, jc: 0, jde: 0, jce: 0, jme: 0, l: 0, b: 0, r: 0, theta: 0, beta: 0, x0: 0, x1: 0, x2: 0, x3: 0, x4: 0, del_psi: 0, del_epsilon: 0, epsilon0: 0, epsilon: 0, del_tau: 0, lamda: 0, nu0: 0, nu: 0, alpha: 0, delta: 0, h: 0, xi: 0, del_alpha: 0, delta_prime: 0, alpha_prime: 0, h_prime: 0, e0: 0, del_e: 0, e: 0, eot: 0, srha: 0, ssha: 0, sta: 0, zenith: 0, azimuth_astro: 0, azimuth: 0, incidence: 0, suntransit: 0, sunrise: 0, sunset: 0
+			year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(), hour: date.getUTCHours(), minute: date.getUTCMinutes(), second: date.getUTCSeconds(), timezone: 0, longitude: longitude, latitude: latitude, delta_ut1: 0, delta_t: 0, elevation: 0, pressure: 0, temperature: 0, slope: 0, azm_rotation: 0, atmos_refract: 0, jd: 0, jc: 0, jde: 0, jce: 0, jme: 0, l: 0, b: 0, r: 0, theta: 0, beta: 0, x0: 0, x1: 0, x2: 0, x3: 0, x4: 0, del_psi: 0, del_epsilon: 0, epsilon0: 0, epsilon: 0, del_tau: 0, lamda: 0, nu0: 0, nu: 0, alpha: 0, delta: 0, h: 0, xi: 0, del_alpha: 0, delta_prime: 0, alpha_prime: 0, h_prime: 0, e0: 0, del_e: 0, e: 0, eot: 0, srha: 0, ssha: 0, sta: 0, zenith: 0, azimuth_astro: 0, azimuth: 0, incidence: 0, suntransit: 0, sunrise: 0, sunset: 0
 		};
 	}
 
@@ -92,7 +92,7 @@ class sunCalc {
 	}
 
 	calculate() {
-		if (this.validate_inputs(this.data)) return;
+		if (!this.validate_inputs(this.data)) return;
 		this.data.jd = this.julian_day(this.data.year, this.data.month, this.data.day, this.data.hour, this.data.minute, this.data.second, this.data.delta_ut1, this.data.timezone);
 		this.calculate_geocentric_sun_right_ascension_and_declination(this.data);
 		this.data.h = this.observer_hour_angle(this.data.nu, this.data.longitude, this.data.alpha);
