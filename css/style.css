@@ -16,6 +16,7 @@
 html,
 body {
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	position: absolute;
 	overflow: hidden;
 	width: 100%;
 	height: 100%;
@@ -86,7 +87,7 @@ button.dropdown-toggle.active {
 
 .dropdown-menu {
 	position: absolute;
-	top: calc(100% + 5px);
+	top: calc(100% + 20px);
 	left: 0;
 	z-index: 11;
 	display: none;
@@ -473,7 +474,44 @@ canvas#fireChart {
 	background: #6F263D;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1024px) {
+	#layer-bar {
+		width: 100%;
+		top: 0;
+		left: 0;
+		transform: none;
+		border-radius: 0;
+		white-space: nowrap;
+		justify-content: flex-start;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+		overflow-x: scroll;
+	}
+
+	#layer-bar::-webkit-scrollbar {
+		display: none;
+	}
+
+	.layer-dropdown {
+		position: static;
+	}
+
+	.dropdown-menu {
+		position: absolute;
+		top: 65px;
+		left: 52px;
+		transform: translateX(0%);
+		min-width: auto;
+		max-width: 90vw;
+		border-top-right-radius: 0px;
+		border-bottom-right-radius: 0px;
+	}
+
+	.dropdown-menu.open {
+		display: block;
+	}
+
+
 	.sidebar {
 		top: auto;
 		bottom: 0;
@@ -484,6 +522,14 @@ canvas#fireChart {
 
 	.sidebar.active {
 		transform: translateY(0);
+	}
+
+	.mapboxgl-ctrl-top-left {
+		margin-top: 55px;
+	}
+
+	.layer-dropdown.open {
+		position: static;
 	}
 }
 

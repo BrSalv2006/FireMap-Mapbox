@@ -303,23 +303,44 @@ function generateWeatherLegend(title, stops, unit) {
 const createCategoryDropdown = (title, parent) => {
 	const dropdownContainer = document.createElement('div');
 	dropdownContainer.className = 'layer-dropdown';
+
 	const toggleButton = document.createElement('button');
 	toggleButton.className = 'dropdown-toggle';
-	toggleButton.innerHTML = `${title} <i class='fas fa-chevron-down' style='font-size: 0.8em; margin-left: 5px;'></i>`;
+	toggleButton.innerHTML = `${title}`;
+
 	const menu = document.createElement('div');
 	menu.className = 'dropdown-menu';
+
+	const isMobile = window.matchMedia("(max-width: 1024px)").matches;
+
+	if (isMobile) {
+		document.body.appendChild(menu);
+	} else {
+		dropdownContainer.appendChild(menu);
+	}
+
 	toggleButton.addEventListener('click', (e) => {
 		e.stopPropagation();
-		const isOpen = dropdownContainer.classList.contains('open');
-		document.querySelectorAll('.layer-dropdown.open').forEach(d => {
-			d.classList.remove('open');
-		});
-		if (!isOpen) {
-			dropdownContainer.classList.add('open');
+
+		if (isMobile) {
+			const isOpen = menu.classList.contains('open');
+			document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open'));
+			document.querySelectorAll('.dropdown-toggle.active').forEach(t => t.classList.remove('active'));
+
+			if (!isOpen) {
+				menu.classList.add('open');
+				toggleButton.classList.add('active');
+			}
+		} else {
+			const isOpen = dropdownContainer.classList.contains('open');
+			document.querySelectorAll('.layer-dropdown.open').forEach(d => {
+				if (d !== dropdownContainer) d.classList.remove('open');
+			});
+			dropdownContainer.classList.toggle('open');
 		}
 	});
+
 	dropdownContainer.appendChild(toggleButton);
-	dropdownContainer.appendChild(menu);
 	parent.appendChild(dropdownContainer);
 	return menu;
 };
@@ -348,7 +369,7 @@ function setupBaseLayerButtons() {
 	baseLayerButtonsContainer.innerHTML = '';
 	for (const layerName in baseLayersConfig) {
 		const button = document.createElement('button');
-		button.innerHTML = `<img src='img/map.png' alt='map icon'> ${layerName}`;
+		button.innerHTML = `<img src='img/map.png' alt='map icon'>${layerName}`;
 		button.addEventListener('click', () => {
 			const {
 				layer, style, theme
@@ -502,21 +523,21 @@ function rebuildOverlayControls() {
 			if (container) container.appendChild(button);
 		};
 		if (layerConfig.category === 'day-night') {
-			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 18w, ${iconSrc.replace(".png", "_27.png")} 27w' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 18w, ${iconSrc.replace(".png", "_27.png")} 27w' alt='layer icon'>${layerKey}`;
 			button.className = 'dropdown-toggle';
 			button.classList.toggle('active', layerConfig.active);
 			layerBar.appendChild(button);
 		} else if (layerConfig.category === 'fire-status') {
-			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'>${layerKey}`;
 			appendButton(fireButtonsContainer);
 		} else if (layerConfig.category === 'satellite') {
-			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'>${layerKey}`;
 			appendButton(satelliteButtonsContainer);
 		} else if (layerConfig.category === 'risk') {
-			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'>${layerKey}`;
 			appendButton(riskButtonsContainer);
 		} else if (layerConfig.category === 'weather') {
-			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'> ${layerKey}`;
+			button.innerHTML = `<img src='${iconSrc}' srcset='${iconSrc} 22w, ${iconSrc.replace(".png", "_33.png")} 33w' alt='layer icon'>${layerKey}`;
 			appendButton(weatherButtonsContainer);
 		}
 		overlayButtons[layerKey] = button;
