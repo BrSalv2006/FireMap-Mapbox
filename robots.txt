@@ -1,0 +1,5 @@
+User-agent: *
+User-agent: AdsBot
+Disallow: /
+
+Sitemap: https://brsalv2006.me/sitemap.xml
