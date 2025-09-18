@@ -2,22 +2,23 @@ importScripts('https://unpkg.com/@turf/turf/turf.min.js');
 
 let workerPortugalGeometry;
 let workerConcelhosGeoJSON;
+const now = new Date();
 
 const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 	for (let i = 0; i < retries; i++) {
 		try {
 			const response = await fetch(url, options);
 			if (!response.ok) {
-				if (response.status === 429 && i < retries - 1) {
-					await new Promise(resolve => setTimeout(resolve, delay * 2 ** i));
+				if (response.status === 429 && i < retries) {
+					await new Promise(resolve => setTimeout(resolve, delay));
 					continue;
 				}
-				throw new Error(`HTTP error! status: ${response.status}`);
+				throw new Error(`HTTP error! Status: ${response.status}`);
 			}
 			return await response.json();
 		} catch (error) {
-			if (i < retries - 1) {
-				await new Promise(resolve => setTimeout(resolve, delay * 2 ** i));
+			if (i < retries) {
+				await new Promise(resolve => setTimeout(resolve, delay));
 			} else {
 				throw error;
 			}
@@ -67,26 +68,11 @@ const getRiskColor = rcm => ({
 	1: '#509E2F', 2: '#FFE900', 3: '#E87722', 4: '#CB333B', 5: '#6F263D'
 }[rcm] || '#FFFFFF');
 
-const FIRE_STATUS_MAP = {
-	'Despacho': 3,
-	'Despacho de 1.º Alerta': 4,
-	'Em Curso': 5,
-	'Chegada ao TO': 6,
-	'Em Resolução': 7,
-	'Conclusão': 8,
-	'Vigilância': 9,
-	'Encerrada': 10,
-	'Falso Alarme': 11,
-	'Falso Alerta': 12,
-};
-
 const handlers = {
 	initData: async ({ url }) => {
 		self.postMessage({ type: 'progress', message: 'A carregar dados geográficos...' });
-		[workerPortugalGeometry, workerConcelhosGeoJSON] = await Promise.all([
-			fetchWithRetry(`${url}json/portugal.json`),
-			fetchWithRetry(`${url}json/concelhos.json`),
-		]);
+		workerPortugalGeometry = await fetchWithRetry(`${url}json/portugal.json`);
+		workerConcelhosGeoJSON = await fetchWithRetry(`${url}json/concelhos.json`);
 		self.postMessage({ type: 'initDataComplete' });
 	},
 
@@ -99,7 +85,7 @@ const handlers = {
 
 		const boundary = turf.feature(workerPortugalGeometry.geometries[0]);
 		const bbox = turf.bbox(boundary);
-		const time = `${Date.now() - dayRange * 86400000},${Date.now()}`;
+		const time = `${new Date().setDate(now.getDate() - dayRange)} - ${now.getTime()}`;
 		const baseParams = new URLSearchParams({
 			returnGeometry: true, time, outSR: 4326, outFields: '*', inSR: 4326,
 			geometry: JSON.stringify({
@@ -124,7 +110,7 @@ const handlers = {
 		if (Object.values(results).every(res => !res)) {
 			self.postMessage({ type: 'error', message: 'Nenhum dado de satélite recente encontrado.' });
 		} else {
-			self.postMessage({ type: 'satelliteResult', data: results });
+			self.postMessage({ type: 'satelliteDataComplete', data: results });
 		}
 	},
 
@@ -161,7 +147,7 @@ const handlers = {
 		}, {});
 
 		if (Object.keys(riskLayers).length > 0) {
-			self.postMessage({ type: 'riskResult', data: riskLayers });
+			self.postMessage({ type: 'riskDataComplete', data: riskLayers });
 		} else {
 			self.postMessage({ type: 'error', message: 'Nenhuma camada de risco pôde ser carregada.' });
 		}
@@ -169,40 +155,36 @@ const handlers = {
 
 	firesData: async () => {
 		self.postMessage({ type: 'progress', message: 'A obter novos dados de incêndios...' });
-		const url = 'https://prociv-agserver.geomai.mai.gov.pt/arcgis/rest/services/Ocorrencias_Base/FeatureServer/0/query';
-		const params = new URLSearchParams({
-			where: 'CodNatureza IN(3105, 3103, 3101)', outSR: 4326, outFields: '*', f: 'geojson',
-		});
-		const data = await fetchWithRetry(`${url}?${params}`);
 
-		if (!data?.features) {
+		const url = 'https://api.fogos.pt/v2/incidents/active';
+		const response = await fetchWithRetry(url);
+
+		if (!response?.success) {
 			self.postMessage({ type: 'error', message: 'Falha na obtenção de dados de incêndios.' });
 			return;
 		}
 
-		const now = new Date();
-		const processedFires = data.features.map(feature => {
-			const p = feature.properties;
-			const start = new Date(p.DataInicioOcorrencia);
+		const processedFires = response.data.map(properties => {
+			const start = new Date(properties.created.sec);
 			const timeElapsed = (now - start) / 3600000;
 			return {
-				id: p.Numero,
-				lat: p.Latitude,
-				lng: p.Longitude,
-				statusCode: FIRE_STATUS_MAP[p.EstadoOcorrencia] || 0,
-				man: p.Operacionais,
-				aerial: p.NumeroMeiosAereosEnvolvidos,
-				terrain: p.NumeroMeiosTerrestresEnvolvidos,
-				location: p.Localidade ? `${p.Concelho}, ${p.Freguesia}, ${p.Localidade}` : `${p.Concelho}, ${p.Freguesia}`,
-				natureza: p.Natureza,
-				status: p.EstadoOcorrencia,
-				startDate: new Date(p.DataInicioOcorrencia).toLocaleString(),
-				updated: new Date(p.DataDosDados).toLocaleString(),
-				important: p.EstadoOcorrencia === 'Em Curso' && p.NumeroMeiosTerrestresEnvolvidos > 15 && timeElapsed >= 3,
+				id: properties.id,
+				lat: properties.lat,
+				lng: properties.lng,
+				statusCode: properties.statusCode,
+				man: properties.man,
+				aerial: properties.aerial,
+				terrain: properties.terrain,
+				location: properties.location,
+				natureza: properties.natureza,
+				status: properties.status,
+				startDate: new Date(properties.dateTime.sec * 1000).toLocaleString(),
+				updated: new Date(properties.updated.sec * 1000).toLocaleString(),
+				important: properties.status === 'Em Curso' && properties.terrain > 15 && timeElapsed >= 3,
 			};
 		});
 
-		self.postMessage({ type: 'firesResult', data: processedFires });
+		self.postMessage({ type: 'fireDataComplete', data: processedFires });
 	},
 };
 

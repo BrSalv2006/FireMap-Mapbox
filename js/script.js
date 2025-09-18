@@ -990,7 +990,7 @@ function setupWorker() {
 		} else if (type === 'initDataComplete') {
 			loader.innerText = 'Dados geográficos carregados. A obter dados de incêndios e risco...';
 			fetchAndApplyDynamicLayers();
-		} else if (type === 'satelliteResult') {
+		} else if (type === 'satelliteDataComplete') {
 			overlayLayers['MODIS'].hotspotData = {
 				type: 'FeatureCollection', features: data.modis?.points || []
 			};
@@ -1005,7 +1005,7 @@ function setupWorker() {
 			};
 			addSatelliteLayers(data);
 			rebuildOverlayControls();
-		} else if (type === 'riskResult') {
+		} else if (type === 'riskDataComplete') {
 			loader.innerText = 'A adicionar camadas de risco...';
 			let activeRiskLayerKey = null;
 			for (const key in data) {
@@ -1047,7 +1047,7 @@ function setupWorker() {
 			riskDataProcessed = true;
 			checkAllDataProcessed();
 			rebuildOverlayControls();
-		} else if (type === 'firesResult') {
+		} else if (type === 'fireDataComplete') {
 			loader.innerText = 'A adicionar novos dados de incêndios...';
 			for (const statusCode in allFireMarkersByStatus) {
 				allFireMarkersByStatus[statusCode].forEach(marker => marker.remove());
