@@ -85,7 +85,7 @@ const handlers = {
 
 		const boundary = turf.feature(workerPortugalGeometry.geometries[0]);
 		const bbox = turf.bbox(boundary);
-		const time = `${new Date().setDate(now.getDate() - dayRange)} - ${now.getTime()}`;
+		const time = `${new Date().setDate(now.getDate() - dayRange)},${now.getTime()}`;
 		const baseParams = new URLSearchParams({
 			returnGeometry: true, time, outSR: 4326, outFields: '*', inSR: 4326,
 			geometry: JSON.stringify({
