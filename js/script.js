@@ -861,7 +861,7 @@ async function fetchFireDetails(id) {
 }
 
 async function plotFireData(id) {
-	const url = `https://api-dev.fogos.pt/fires/data?id=${id}`;
+	const url = `https://api.fogos.pt/fires/data?id=${id}`;
 	try {
 		const response = await fetch(url);
 		if (!response.ok) {
