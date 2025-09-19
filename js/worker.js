@@ -1,7 +1,3 @@
-importScripts('https://unpkg.com/@turf/turf/turf.min.js');
-
-let workerPortugalGeometry;
-let workerConcelhosGeoJSON;
 const now = new Date();
 
 const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
@@ -69,98 +65,11 @@ const getRiskColor = rcm => ({
 }[rcm] || '#FFFFFF');
 
 const handlers = {
-	initData: async ({ url }) => {
-		self.postMessage({ type: 'progress', message: 'A carregar dados geográficos...' });
-		workerPortugalGeometry = await fetchWithRetry(`${url}json/portugal.json`);
-		workerConcelhosGeoJSON = await fetchWithRetry(`${url}json/concelhos.json`);
-		self.postMessage({ type: 'initDataComplete' });
-	},
-
-	satelliteData: async ({ dayRange }) => {
-		self.postMessage({ type: 'progress', message: 'A obter dados de satélite...' });
-		if (!workerPortugalGeometry) {
-			self.postMessage({ type: 'error', message: 'Geometria de Portugal não carregada.' });
-			return;
-		}
-
-		const boundary = turf.feature(workerPortugalGeometry.geometries[0]);
-		const bbox = turf.bbox(boundary);
-		const time = `${new Date().setDate(now.getDate() - dayRange)},${now.getTime()}`;
-		const baseParams = new URLSearchParams({
-			returnGeometry: true, time, outSR: 4326, outFields: '*', inSR: 4326,
-			geometry: JSON.stringify({
-				xmin: bbox[0], ymin: bbox[1], xmax: bbox[2], ymax: bbox[3],
-				spatialReference: { wkid: 4326 },
-			}),
-			geometryType: 'esriGeometryEnvelope', spatialRel: 'esriSpatialRelIntersects', f: 'geojson',
-		});
-
-		const urls = {
-			modis: `https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/MODIS_Thermal_v1/FeatureServer/0/query?${baseParams}`,
-			viirs: `https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0/query?${baseParams}`,
-		};
-
-		const results = {};
-		for (const [key, url] of Object.entries(urls)) {
-			self.postMessage({ type: 'progress', message: `A obter dados ${key.toUpperCase()}...` });
-			const features = await fetchWithRetry(url);
-			results[key] = features ? processFirePoints(features, boundary) : null;
-		}
-
-		if (Object.values(results).every(res => !res)) {
-			self.postMessage({ type: 'error', message: 'Nenhum dado de satélite recente encontrado.' });
-		} else {
-			self.postMessage({ type: 'satelliteDataComplete', data: results });
-		}
-	},
-
-	riskData: async () => {
-		self.postMessage({ type: 'progress', message: 'A obter dados de Risco...' });
-		if (!workerConcelhosGeoJSON) {
-			self.postMessage({ type: 'error', message: 'GeoJSON dos Concelhos não carregado.' });
-			return;
-		}
-
-		const riskUrl = 'https://corsproxy.io/?url=https://www.ipma.pt/en/riscoincendio/rcm.pt/';
-		const response = await fetch(riskUrl);
-		const text = await response.text();
-		const pattern = /rcmF\[\d+\]\s*=\s*(\{\s*[\s\S]*?\s*});/g;
-		const matches = [...text.matchAll(pattern)];
-		const riskData = matches.map(([, data]) => JSON.parse(data.trim()));
-
-		const riskLayers = riskData.reduce((acc, data) => {
-			if (data) {
-				const date = new Date(data.dataPrev).toLocaleDateString();
-				acc[date] = {
-					type: 'FeatureCollection',
-					features: workerConcelhosGeoJSON.features.map(f => ({
-						...f,
-						properties: {
-							...f.properties,
-							rcm: data.local[f.properties.dtmn]?.data?.rcm,
-							fillColor: getRiskColor(data.local[f.properties.dtmn]?.data?.rcm),
-						},
-					})),
-				};
-			}
-			return acc;
-		}, {});
-
-		if (Object.keys(riskLayers).length > 0) {
-			self.postMessage({ type: 'riskDataComplete', data: riskLayers });
-		} else {
-			self.postMessage({ type: 'error', message: 'Nenhuma camada de risco pôde ser carregada.' });
-		}
-	},
-
-	firesData: async () => {
-		self.postMessage({ type: 'progress', message: 'A obter novos dados de incêndios...' });
-
+	fireData: async () => {
 		const url = 'https://api.fogos.pt/v2/incidents/active';
 		const response = await fetchWithRetry(url);
 
 		if (!response?.success) {
-			self.postMessage({ type: 'error', message: 'Falha na obtenção de dados de incêndios.' });
 			return;
 		}
 
@@ -180,12 +89,93 @@ const handlers = {
 				status: properties.status,
 				startDate: new Date(properties.dateTime.sec * 1000).toLocaleString(),
 				updated: new Date(properties.updated.sec * 1000).toLocaleString(),
-				important: properties.status === 'Em Curso' && properties.terrain > 15 && timeElapsed >= 3,
+				important: (properties.terrain > 15 || properties.aerial > 0) && timeElapsed >= 3,
 			};
 		});
 
 		self.postMessage({ type: 'fireDataComplete', data: processedFires });
 	},
+
+	satelliteData: async ({ url }) => {
+		importScripts('https://unpkg.com/@turf/turf/turf.min.js');
+		portugalGeometry = await fetchWithRetry(`${url}json/portugal.json`);
+		if (!portugalGeometry) {
+			return;
+		}
+
+		const boundary = turf.feature(portugalGeometry.geometries[0]);
+		const bbox = turf.bbox(boundary);
+		const time = `${new Date().setDate(now.getDate() - 1)},${now.getTime()}`;
+		const baseParams = new URLSearchParams({
+			returnGeometry: true, time, outSR: 4326, outFields: '*', inSR: 4326,
+			geometry: JSON.stringify({
+				xmin: bbox[0], ymin: bbox[1], xmax: bbox[2], ymax: bbox[3],
+				spatialReference: { wkid: 4326 },
+			}),
+			geometryType: 'esriGeometryEnvelope', spatialRel: 'esriSpatialRelIntersects', f: 'geojson',
+		});
+
+		const urls = {
+			modis: `https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/MODIS_Thermal_v1/FeatureServer/0/query?${baseParams}`,
+			viirs: `https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0/query?${baseParams}`,
+		};
+
+		let results = [];
+		for (const [key, url] of Object.entries(urls)) {
+			const features = await fetchWithRetry(url);
+			results.push(features ? { satellite:key, data:processFirePoints(features, boundary) } : null);
+		}
+
+		if (!Object.values(results).every(res => !res)) {
+			self.postMessage({ type: 'satelliteDataComplete', data: results });
+		}
+	},
+
+	riskData: async ({ url }) => {
+		concelhosGeoJSON = await fetchWithRetry(`${url}json/concelhos.json`);
+		if (!concelhosGeoJSON) {
+			return;
+		}
+
+		const riskUrl = 'https://corsproxy.io/?url=https://www.ipma.pt/en/riscoincendio/rcm.pt/';
+		const response = await fetch(riskUrl);
+		const text = await response.text();
+		const pattern = /rcmF\[\d+\]\s*=\s*(\{\s*[\s\S]*?\s*});/g;
+		const matches = [...text.matchAll(pattern)];
+		const riskData = matches.map(([, data]) => JSON.parse(data.trim()));
+
+		let riskLayers = [];
+		riskData.forEach(data => {
+			const date = new Date(data.dataPrev).toLocaleDateString();
+			riskLayers.push({
+					type: 'FeatureCollection',
+					features: concelhosGeoJSON.features.map(f => ({
+						...f,
+						properties: {
+							...f.properties,
+							rcm: data.local[f.properties.dtmn]?.data?.rcm,
+							fillColor: getRiskColor(data.local[f.properties.dtmn]?.data?.rcm)
+						}
+					}
+				)),
+				date: date
+			});
+		});
+
+		if (Object.keys(riskLayers).length > 0) {
+			self.postMessage({ type: 'riskDataComplete', data: riskLayers });
+		}
+	},
+
+	weatherData: async ({ url }) => {
+		weatherJSON = await fetchWithRetry(`${url}json/weather_legends.json`);
+		if (!weatherJSON) {
+			return;
+		}
+		if (Object.values(weatherJSON).length > 0) {
+			self.postMessage({ type: 'weatherDataComplete', data: weatherJSON });
+		}
+	}
 };
 
 self.onmessage = async ({ data }) => {
@@ -195,7 +185,6 @@ self.onmessage = async ({ data }) => {
 			await handler(data);
 		} catch (err) {
 			console.error(err);
-			self.postMessage({ type: 'error', message: `Ocorreu um erro no worker: ${err.message}` });
 		}
 	}
 };
