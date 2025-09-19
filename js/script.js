@@ -291,7 +291,7 @@ function fetchFire() {
                         document.querySelector('.f-man').textContent = fire.man;
                         document.querySelector('.f-aerial').textContent = fire.aerial;
                         document.querySelector('.f-terrain').textContent = fire.terrain;
-                        document.querySelector('.f-location').innerHTML = `<a href='https://www.google.com/maps/search/${fire.lat},${fire.lng}' target='_blank' rel='noopener noreferrer'><i class='fas fa-map-marker-alt'></i> ${fire.lat},${fire.lng}</a>`;
+                        document.querySelector('.f-location').innerHTML = `<a href='https://www.google.com/maps/search/${fire.lat},${fire.lng}' target='_blank' rel='noopener noreferrer'>${fire.lat},${fire.lng}</a>`;
                         document.querySelector('.f-nature').textContent = fire.natureza;
                         document.querySelector('.f-update').textContent = fire.updated;
                         document.querySelector('.f-start').textContent = fire.startDate;
